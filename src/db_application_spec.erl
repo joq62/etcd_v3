@@ -111,16 +111,16 @@ do(Q) ->
 %%-------------------------------------------------------------------------
 init_table()->
     ok=create_table(),
-    AllFileNames=config_server:application_all_filenames(),
+    AllFileNames=config:application_all_filenames(),
     init_table(AllFileNames).
     
 init_table([])->
     ok;
 init_table([FileName|T])->
     {atomic,ok}=create(FileName,
-		       config_server:application_vsn(FileName),
-		       config_server:application_gitpath(FileName),
-		       config_server:application_start_cmd(FileName)		       
+		       config:application_vsn(FileName),
+		       config:application_gitpath(FileName),
+		       config:application_start_cmd(FileName)		       
 		      ),
     
     init_table(T).

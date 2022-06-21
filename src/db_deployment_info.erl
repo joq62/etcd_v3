@@ -117,7 +117,7 @@ do(Q) ->
 %%-------------------------------------------------------------------------
 init_table()->
     ok=create_table(),
-    AllFileNames=config_server:deployment_all_filenames(),
+    AllFileNames=config:deployment_all_filenames(),
     init_table(AllFileNames).
     
 init_table([])->
@@ -125,10 +125,10 @@ init_table([])->
 init_table([FileName|T])->
     {atomic,ok}=create(
 		       FileName,
-		       config_server:deployment_vsn(FileName),
-		       config_server:deployment_appl_specs(FileName),
-		       config_server:deployment_num_instances(FileName),
-		       config_server:deployment_directive(FileName)		       
+		       config:deployment_vsn(FileName),
+		       config:deployment_appl_specs(FileName),
+		       config:deployment_num_instances(FileName),
+		       config:deployment_directive(FileName)		       
 		      ),
     
     init_table(T).

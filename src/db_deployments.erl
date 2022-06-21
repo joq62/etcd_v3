@@ -121,19 +121,19 @@ do(Q) ->
 %%-------------------------------------------------------------------------
 init_table()->
     ok=create_table(),
-    AllFileNames=config_server:deployment_spec_all_filenames(),
+    AllFileNames=config:deployment_spec_all_filenames(),
     init_table(AllFileNames).
     
 init_table([])->
     ok;
 init_table([FileName|T])->
     {atomic,ok}=create(
-		  config_server:deployment_spec_name(FileName),
-		  config_server:deployment_spec_controllers(FileName),
-		  config_server:deployment_spec_workers(FileName),
-		  config_server:deployment_spec_cookie(FileName),
-		  config_server:deployment_spec_hosts(FileName),
-		  config_server:deployment_spec_deployments(FileName)
+		  FileName,
+		  config:deployment_spec_controllers(FileName),
+		  config:deployment_spec_workers(FileName),
+		  config:deployment_spec_cookie(FileName),
+		  config:deployment_spec_hosts(FileName),
+		  config:deployment_spec_deployments(FileName)
 		 ),
     
     init_table(T).

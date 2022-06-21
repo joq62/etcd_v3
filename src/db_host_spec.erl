@@ -123,19 +123,19 @@ do(Q) ->
 %%-------------------------------------------------------------------------
 init_table()->
     ok=create_table(),
-    AllHostNames=config_server:host_all_hostnames(),
+    AllHostNames=config:host_all_hostnames(),
     init_table(AllHostNames).
     
 init_table([])->
     ok;
 init_table([HostName|T])->
     {atomic,ok}=create(HostName,
-		       config_server:host_local_ip(HostName),
-		       config_server:host_public_ip(HostName),
-		       config_server:host_ssh_port(HostName),
-		       config_server:host_uid(HostName),
-		       config_server:host_passwd(HostName),
-		       config_server:host_application_config(HostName)
+		       config:host_local_ip(HostName),
+		       config:host_public_ip(HostName),
+		       config:host_ssh_port(HostName),
+		       config:host_uid(HostName),
+		       config:host_passwd(HostName),
+		       config:host_application_config(HostName)
 		      ),
     
     init_table(T).
