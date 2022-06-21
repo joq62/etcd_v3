@@ -128,7 +128,7 @@ init_table([])->
     ok;
 init_table([FileName|T])->
     {atomic,ok}=create(
-		  FileName,
+		  config:deployment_spec_name(FileName),
 		  config:deployment_spec_controllers(FileName),
 		  config:deployment_spec_workers(FileName),
 		  config:deployment_spec_cookie(FileName),
