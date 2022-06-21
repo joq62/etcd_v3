@@ -25,22 +25,22 @@ start()->
     
    
     ok=start_node_etcd(),
-    io:format("sd_server:all() ~p~n",[sd_server:all()]),
+    io:format("sd:all() ~p~n",[sd:all()]),
 
     ok=db_host_spec:init_table(),
-   "192.168.1.202"=config_server:host_local_ip("c202"),
+   "192.168.1.202"=config:host_local_ip("c202"),
     io:format("db_host_spec:read_all() ~p~n",[db_host_spec:read_all()]),
 
     ok=db_application_spec:init_table(),
-    "https://github.com/joq62/nodelog.git"=config_server:application_gitpath("nodelog.spec"),
+    "https://github.com/joq62/nodelog.git"=config:application_gitpath("nodelog.spec"),
     io:format("db_application_spec:read_all() ~p~n",[db_application_spec:read_all()]),
 
     ok=db_deployment_info:init_table(),
-    "calculator"=config_server:deployment_name("calculator.depl"),
+    "calculator"=config:deployment_name("calculator.depl"),
     io:format("db_deployment_info:read_all() ~p~n",[db_deployment_info:read_all()]),
 
     ok=db_deployments:init_table(),
-    "cluster1_cookie"=config_server:deployment_spec_cookie("cluster1.depl_spec"),
+    "cluster1_cookie"=config:deployment_spec_cookie("cluster1.depl_spec"),
     io:format("db_deployments:read_all() ~p~n",[db_deployments:read_all()]),
 
 
@@ -62,7 +62,7 @@ check_application_spec()->
 %% --------------------------------------------------------------------
 check_host_spec()->
     HostName="c202",
-    "192.168.1.202"=config_server:host_local_ip("c202"),
+    "192.168.1.202"=config:host_local_ip("c202"),
     ok.
 
 %% --------------------------------------------------------------------
@@ -72,19 +72,19 @@ check_host_spec()->
 %% --------------------------------------------------------------------
 init_host_spec()->
     ok=db_host_spec:create_table(),
-    AllHostNames=config_server:host_all_hostnames(),
+    AllHostNames=config:host_all_hostnames(),
     init_host_spec(AllHostNames).
     
 init_host_spec([])->
     ok;
 init_host_spec([HostName|T])->
     {atomic,ok}=db_host_spec:create(HostName,
-				    config_server:host_local_ip(HostName),
-				    config_server:host_public_ip(HostName),
-				    config_server:host_ssh_port(HostName),
-				    config_server:host_uid(HostName),
-				    config_server:host_passwd(HostName),
-				    config_server:host_application_config(HostName)
+				    config:host_local_ip(HostName),
+				    config:host_public_ip(HostName),
+				    config:host_ssh_port(HostName),
+				    config:host_uid(HostName),
+				    config:host_passwd(HostName),
+				    config:host_application_config(HostName)
 				   ),
     
     init_host_spec(T).
@@ -96,13 +96,13 @@ init_host_spec([HostName|T])->
 %% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
 %% --------------------------------------------------------------------
 start_node_etcd()->
-    ok=sd_server:appl_start([]),
-    pong=sd_server:ping(),
-    ok=config_server:appl_start([]),
-    pong=config_server:ping(),
-    ok=etcd_server:appl_start([]),
-    pong=etcd_server:ping(), 
-    ok=etcd_server:dynamic_db_init([]),
+    ok=sd:appl_start([]),
+    pong=sd:ping(),
+    ok=config:appl_start([]),
+    pong=config:ping(),
+    ok=etcd:appl_start([]),
+    pong=etcd:ping(), 
+    ok=etcd:dynamic_db_init([]),
     ok.
 
 %% --------------------------------------------------------------------

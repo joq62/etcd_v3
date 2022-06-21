@@ -7,7 +7,7 @@
 %%% 
 %%% Created : 10 dec 2012
 %%% -------------------------------------------------------------------
--module(etcd_server).
+-module(etcd).
 
 -behaviour(gen_server).
 
@@ -49,9 +49,9 @@
 %% External functions
 %% ====================================================================
 appl_start([])->
-    application:start(etcd).
+    application:start(?MODULE).
 
-
+ 
 %% call
 start()-> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()-> gen_server:call(?MODULE, {stop},infinity).

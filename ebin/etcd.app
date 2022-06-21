@@ -6,6 +6,6 @@
               {applications,[kernel,stdlib]},
               {env,[]},
               {modules,[db_application_spec,db_deployment_info,db_deployments,
-                        db_host_spec,etcd_app,etcd_server,etcd_sup,lib_etcd]},
+                        db_host_spec,etcd,etcd_app,etcd_sup,lib_etcd]},
               {licenses,["Apache 2.0"]},
               {links,[]}]}.

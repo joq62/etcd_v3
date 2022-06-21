@@ -30,7 +30,7 @@ init([]) ->
                  intensity => 0,
                  period => 1},
     ChildSpecs = [#{id=>etcd,
-		    start=>{etcd_server,start,[]}}],
+		    start=>{etcd,start,[]}}],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions

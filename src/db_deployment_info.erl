@@ -124,7 +124,7 @@ init_table([])->
     ok;
 init_table([FileName|T])->
     {atomic,ok}=create(
-		       config_server:deployment_name(FileName),
+		       FileName,
 		       config_server:deployment_vsn(FileName),
 		       config_server:deployment_appl_specs(FileName),
 		       config_server:deployment_num_instances(FileName),
