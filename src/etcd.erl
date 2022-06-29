@@ -89,7 +89,7 @@ init([]) ->
     
     DbaseAppNodes=[Node||{Node,Host}<-sd:get(etcd),
 			Node/=node()],
-    ok=lib_dbase:dynamic_db_init(DbaseAppNodes),
+    ok=lib_etcd:dynamic_db_init(DbaseAppNodes),
  
     {ok, #state{}}.
 
