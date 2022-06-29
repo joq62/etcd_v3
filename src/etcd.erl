@@ -87,8 +87,9 @@ schedule()->
 %% --------------------------------------------------------------------
 init([]) ->
     
- %   DbaseAppNodes=lists:delete(node(),sd_server:get(etcd)),
- %   ok=lib_dbase:dynamic_db_init(DbaseAppNodes),
+    DbaseAppNodes=[Node||{Node,Host}<-sd:get(etcd),
+			Node/=node()],
+    ok=lib_dbase:dynamic_db_init(DbaseAppNodes),
  
     {ok, #state{}}.
 
