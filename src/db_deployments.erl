@@ -116,7 +116,7 @@ do(Q) ->
 init_table(Node)->
     ok=create_table([Node]),
     AllFileNames=config:deployment_spec_all_filenames(),
-    init_table(AllFileNames).
+    init_table(AllFileNames,Node).
     
 init_table([],_)->
     ok;
