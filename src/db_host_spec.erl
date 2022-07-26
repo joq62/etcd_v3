@@ -16,11 +16,6 @@
 		   application_config
 		  }).
 
- 
-create_table()->
-    mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)}]),
-    mnesia:wait_for_tables([?TABLE], 20000).
-
 create_table(NodeList)->
     mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)},
 				 {disc_copies,NodeList}]),
@@ -121,21 +116,22 @@ do(Q) ->
     Result.
 
 %%-------------------------------------------------------------------------
-init_table()->
-    ok=create_table(),
+init_table(Node)->
+    ok=create_table([Node]),
     AllHostNames=config:host_all_hostnames(),
-    init_table(AllHostNames).
+    init_table(AllHostNames,Node).
     
-init_table([])->
+init_table([],_)->
     ok;
-init_table([HostName|T])->
-    {atomic,ok}=create(HostName,
-		       config:host_local_ip(HostName),
-		       config:host_public_ip(HostName),
-		       config:host_ssh_port(HostName),
-		       config:host_uid(HostName),
-		       config:host_passwd(HostName),
-		       config:host_application_config(HostName)
-		      ),
+init_table([HostName|T],Node)->
+    {atomic,ok}=rpc:call(Node,?MODULE,create,
+			 [HostName,
+			  config:host_local_ip(HostName),
+			  config:host_public_ip(HostName),
+			  config:host_ssh_port(HostName),
+			  config:host_uid(HostName),
+			  config:host_passwd(HostName),
+			  config:host_application_config(HostName)
+			 ]),
     
-    init_table(T).
+    init_table(T,Node).

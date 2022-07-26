@@ -14,11 +14,6 @@
 			 directive
 			}).
 
- 
-create_table()->
-    mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)}]),
-    mnesia:wait_for_tables([?TABLE], 20000).
-
 create_table(NodeList)->
     mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)},
 				 {disc_copies,NodeList}]),
@@ -115,20 +110,20 @@ do(Q) ->
     Result.
 
 %%-------------------------------------------------------------------------
-init_table()->
-    ok=create_table(),
+init_table(Node)->
+    ok=create_table([Node]),
     AllFileNames=config:deployment_all_filenames(),
-    init_table(AllFileNames).
+    init_table(AllFileNames,Node).
     
-init_table([])->
+init_table([],_)->
     ok;
-init_table([FileName|T])->
-    {atomic,ok}=create(
-		       FileName,
-		       config:deployment_vsn(FileName),
-		       config:deployment_appl_specs(FileName),
-		       config:deployment_num_instances(FileName),
-		       config:deployment_directive(FileName)		       
-		      ),
+init_table([FileName|T],Node)->
+    {atomic,ok}=rpc:call(Node,?MODULE,create,[
+					      FileName,
+					      config:deployment_vsn(FileName),
+					      config:deployment_appl_specs(FileName),
+					      config:deployment_num_instances(FileName),
+					      config:deployment_directive(FileName)		       
+					     ]),
     
-    init_table(T).
+    init_table(T,Node).
