@@ -113,7 +113,7 @@ init_table(Node)->
 init_table([],_)->
     ok;
 init_table([FileName|T],Node)->
-    {atomic,ok}=rpc:call(Node,create,
+    {atomic,ok}=rpc:call(Node,?MODULE,create,
 			 [FileName,
 			  config:application_vsn(FileName),
 			  config:application_gitpath(FileName),
