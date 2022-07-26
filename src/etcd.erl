@@ -17,15 +17,9 @@
 
 %% --------------------------------------------------------------------
 
--define(ScheduleInterval,1*10*1000).
-
 %% External exports
 -export([
-	 dynamic_db_init/1,
-	 dynamic_add_table/2,
-	 load_textfile/1,
 
-	 schedule/0
 	]).
 
 -export([
@@ -56,22 +50,10 @@ appl_start([])->
 start()-> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()-> gen_server:call(?MODULE, {stop},infinity).
 
-dynamic_db_init(DbaseNodeList)->
-    gen_server:call(?MODULE,{dynamic_db_init,DbaseNodeList},infinity).
-
-dynamic_add_table(Table,StorageType)->
-    gen_server:call(?MODULE,{dynamic_add_table,Table,StorageType},infinity).  
-
-load_textfile(TableTextFiles)->
-    gen_server:call(?MODULE,{load_textfile,TableTextFiles},infinity).    
-
-    
 ping()->
     gen_server:call(?MODULE,{ping},infinity).
 
 %% cast
-schedule()->
-    gen_server:cast(?MODULE, {schedule}).
 
 %% ====================================================================
 %% Server functions
@@ -86,10 +68,6 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    
-    DbaseAppNodes=[Node||{Node,Host}<-sd:get(etcd),
-			Node/=node()],
-    ok=lib_etcd:dynamic_db_init(DbaseAppNodes),
  
     {ok, #state{}}.
 
@@ -103,29 +81,10 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_call({dynamic_db_init,DbaseNodeList},_From, State) ->
-    Reply=rpc:call(node(),lib_etcd,dynamic_db_init,[DbaseNodeList],5*1000),
-    {reply, Reply, State};
-
-handle_call({dynamic_add_table,Table,StorageType},_From, State) ->
-    Reply=rpc:call(node(),lib_etcd,dynamic_add_table,[Table,StorageType],5*1000),
-    {reply, Reply, State};
-
-handle_call({load_textfile,TableTextFiles},_From, State) ->
-    Reply=rpc:call(node(),lib_etcd,load_textfile,[TableTextFiles],5*1000),
-    {reply, Reply, State};
 
 handle_call({ping},_From, State) ->
     Reply=pong,
     {reply, Reply, State};
-
-
-
-handle_call({stop}, _From, State) ->
-    mnesia:stop(),
-    mnesia:del_table_copy(schema,node()),
-    mnesia:delete_schema([node()]),
-    {stop, normal, shutdown_ok, State};
 
 handle_call(Request, From, State) ->
     Reply = {unmatched_signal,?MODULE,Request,From},
