@@ -115,7 +115,7 @@ do(Q) ->
 %%-------------------------------------------------------------------------
 init_table(SourceNode,DestNode)->
     ok=rpc:call(DestNode,?MODULE,create_table,[[DestNode]]),
-    AllFileNames=rpc:call(SourceNode,config,deployments_spec_all_filenames,[]),
+    AllFileNames=rpc:call(SourceNode,config,deployment_spec_all_filenames,[]),
     init_table(AllFileNames,SourceNode,DestNode).
     
 init_table([],_,_)->
