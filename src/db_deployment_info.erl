@@ -110,20 +110,20 @@ do(Q) ->
     Result.
 
 %%-------------------------------------------------------------------------
-init_table(Node)->
-    ok=create_table([Node]),
-    AllFileNames=config:deployment_all_filenames(),
-    init_table(AllFileNames,Node).
+init_table(SourceNode,DestNode)->
+    ok=create_table([DestNode]),
+    AllFileNames=rpc:call(SourceNode,config,deployment_all_filenames,[]),
+    init_table(AllFileNames,SourceNode,DestNode).
     
-init_table([],_)->
+init_table([],_,_)->
     ok;
-init_table([FileName|T],Node)->
-    {atomic,ok}=rpc:call(Node,?MODULE,create,[
-					      FileName,
-					      config:deployment_vsn(FileName),
-					      config:deployment_appl_specs(FileName),
-					      config:deployment_num_instances(FileName),
-					      config:deployment_directive(FileName)		       
-					     ]),
+init_table([FileName|T],SourceNode,DestNode)->
+    {atomic,ok}=rpc:call(DestNode,?MODULE,create,
+			 [FileName,
+			  rpc:call(SourceNode,config,deployment_vsn,[FileName]),
+			  rpc:call(SourceNode,config,deployment_appl_specs,[FileName]),
+			  rpc:call(SourceNode,config,deployment_num_instances,[FileName]),
+			  rpc:call(SourceNode,config,deployment_directive,[FileName])
+			 ]),
     
-    init_table(T,Node).
+    init_table(T,SourceNode,DestNode).

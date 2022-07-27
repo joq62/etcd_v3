@@ -105,19 +105,19 @@ do(Q) ->
     Result.
 
 %%-------------------------------------------------------------------------
-init_table(Node)->
-    ok=create_table([Node]),
-    AllFileNames=config:application_all_filenames(),
-    init_table(AllFileNames,Node).
+init_table(SourceNode,DestNode)->
+    ok=create_table([DestNode]),
+    AllFileNames=rpc:call(SourceNode,config,application_all_filenames,[]),
+    init_table(AllFileNames,SourceNode,DestNode).
     
-init_table([],_)->
+init_table([],_,_)->
     ok;
-init_table([FileName|T],Node)->
-    {atomic,ok}=rpc:call(Node,?MODULE,create,
+init_table([FileName|T],SourceNode,DestNode)->
+    {atomic,ok}=rpc:call(DestNode,?MODULE,create,
 			 [FileName,
-			  config:application_vsn(FileName),
-			  config:application_gitpath(FileName),
-			  config:application_start_cmd(FileName)
+			  rpc:call(SourceNode,config,application_vsn,[FileName]),
+			  rpc:call(SourceNode,config,application_gitpath,[FileName]),
+			  rpc:call(SourceNode,config,application_start_cmd,[FileName])
 			 ]),
     
-    init_table(T,Node).
+    init_table(T,SourceNode,DestNode).

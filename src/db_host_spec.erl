@@ -116,22 +116,22 @@ do(Q) ->
     Result.
 
 %%-------------------------------------------------------------------------
-init_table(Node)->
-    ok=create_table([Node]),
-    AllHostNames=config:host_all_hostnames(),
-    init_table(AllHostNames,Node).
+init_table(SourceNode,DestNode)->
+    ok=create_table([DestNode]),
+    AllHostNames=rpc:call(SourceNode,config,host_all_hostnames,[]),
+    init_table(AllHostNames,SourceNode,DestNode).
     
-init_table([],_)->
+init_table([],_,_)->
     ok;
-init_table([HostName|T],Node)->
-    {atomic,ok}=rpc:call(Node,?MODULE,create,
+init_table([HostName|T],SourceNode,DestNode)->
+    {atomic,ok}=rpc:call(DestNode,?MODULE,create,
 			 [HostName,
-			  config:host_local_ip(HostName),
-			  config:host_public_ip(HostName),
-			  config:host_ssh_port(HostName),
-			  config:host_uid(HostName),
-			  config:host_passwd(HostName),
-			  config:host_application_config(HostName)
+			  rpc:call(SourceNode,config,host_local_ip,[HostName]),
+			  rpc:call(SourceNode,config,host_public_ip,[HostName]),
+			  rpc:call(SourceNode,config,host_ssh_port,[HostName]),
+			  rpc:call(SourceNode,config,host_uid,[HostName]),
+			  rpc:call(SourceNode,config,host_passwd,[HostName]),
+			  rpc:call(SourceNode,config,host_application_config,[HostName])
 			 ]),
     
-    init_table(T,Node).
+    init_table(T,SourceNode,DestNode).

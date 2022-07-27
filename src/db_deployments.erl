@@ -113,21 +113,23 @@ do(Q) ->
     Result.
 
 %%-------------------------------------------------------------------------
-init_table(Node)->
-    ok=create_table([Node]),
-    AllFileNames=config:deployment_spec_all_filenames(),
-    init_table(AllFileNames,Node).
+init_table(SourceNode,DestNode)->
+    ok=create_table([DestNode]),
+    AllFileNames=rpc:call(SourceNode,config,deployments_spec_all_filenames,[]),
+    init_table(AllFileNames,SourceNode,DestNode).
     
-init_table([],_)->
+init_table([],_,_)->
     ok;
-init_table([FileName|T],Node)->
-    {atomic,ok}=rpc:call(Node,?MODULE,create,[
-					      config:deployment_spec_name(FileName),
-					      config:deployment_spec_controllers(FileName),
-					      config:deployment_spec_workers(FileName),
-					      config:deployment_spec_cookie(FileName),
-					      config:deployment_spec_hosts(FileName),
-					      config:deployment_spec_deployments(FileName)
-					     ]),
+init_table([FileName|T],SourceNode,DestNode)->
+    {atomic,ok}=rpc:call(DestNode,?MODULE,create,
+			 [
+			  rpc:call(SourceNode,config,deployment_spec_name,[FileName]),
+			  rpc:call(SourceNode,config,deployment_spec_controllers,[FileName]),
+			  rpc:call(SourceNode,config,deployment_spec_workers,[FileName]),
+			  rpc:call(SourceNode,config,deployment_spec_cookie,[FileName]),
+			  rpc:call(SourceNode,config,deployment_spec_hosts,[FileName]),
+			  rpc:call(SourceNode,config,deployment_spec_deployments,[FileName])
+
+			 ]),
     
-    init_table(T,Node).
+    init_table(T,SourceNode,DestNode).
