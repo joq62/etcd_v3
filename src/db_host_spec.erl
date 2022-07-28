@@ -81,6 +81,11 @@ read(Key,HostName)->
 	   end,
     Return.
 
+
+get_all_hostnames()->
+    Z=do(qlc:q([X || X <- mnesia:table(?TABLE)])),
+    [HostName||{?RECORD,HostName,_LocalIp,_PublicIp,_SshPort,_Uid,_Passwd,_ApplicationConfig}<-Z].
+    
 read_all() ->
     Z=do(qlc:q([X || X <- mnesia:table(?TABLE)])),
     [{HostName,LocalIp,PublicIp,SshPort,Uid,Passwd,ApplicationConfig}||{?RECORD,HostName,LocalIp,PublicIp,SshPort,Uid,Passwd,ApplicationConfig}<-Z].
