@@ -59,13 +59,13 @@ start()->
 	      {ok,"https://github.com/joq62/etcd.git"}=/=rpc:call(Node,db_application_spec,read,[gitpath,"etcd.spec"])],
     
     []=[Node||Node<-Nodes,
-	      ["c100","c200","c201","c202","c300"]=/=lists:sort(rpc:call(InitialNode,db_host_spec,get_all_hostnames,[]))],
+	      ["c100","c200","c201","c202","c300"]=/=lists:sort(rpc:call(Node,db_host_spec,get_all_hostnames,[]))],
 
     []=[Node||Node<-Nodes,
-	      {ok,["c202"]}=/=rpc:call(InitialNode,db_deployments,read,[hosts,"solis"])],
+	      {ok,["c202"]}=/=rpc:call(Node,db_deployments,read,[hosts,"solis"])],
 
     []=[Node||Node<-Nodes,
-	      {ok,"solis.depl"}=/=rpc:call(InitialNode,db_deployment_info,read,[name,"solis.depl"])],
+	      {ok,"solis.depl"}=/=rpc:call(Node,db_deployment_info,read,[name,"solis.depl"])],
    
 
     %% Kill Initial Node
