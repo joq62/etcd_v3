@@ -4,11 +4,10 @@
   {registered, []},
   {mod, {etcd_app, []}},
   {applications,
-   [kernel,
-    stdlib
+   [kernel,stdlib
    ]},
   {env,[]},
-  {modules, []},
+  {modules, [etcd_app,etcd_sup]},
 
   {licenses, ["Apache 2.0"]},
   {links, []}

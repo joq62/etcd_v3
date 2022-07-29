@@ -4,6 +4,7 @@ all:
 	rm -rf config sd;
 	rm -rf deployments *_info_specs;
 	rm -rf _build test_ebin ebin *_info_specs;
+	rm -rf Mnesia.*;
 	mkdir ebin;		
 	rebar3 compile;	
 	cp _build/default/lib/*/ebin/* ebin;
@@ -21,6 +22,7 @@ eunit:
 	rm -rf deployments *_info_specs;
 	rm -rf config sd;
 	rm -rf rebar.lock;
+	rm -rf Mnesia.*;
 	rm -rf ebin;
 	mkdir  application_info_specs;
 	cp ../../specifications/application_info_specs/*.spec application_info_specs;
@@ -36,5 +38,5 @@ eunit:
 	cp _build/default/lib/*/ebin/* ebin;
 	git clone https://github.com/joq62/config.git;
 	git clone https://github.com/joq62/sd.git;
-	erlc -o test_ebin test/*.erl;
-	erl -pa host_info_specs -pa */ebin -pa ebin -pa test_ebin -sname etcd_test -run basic_eunit start -setcookie cookie_test
+	erlc -I include -o test_ebin test/*.erl;
+	erl -pa host_info_specs -pa */ebin -pa ebin -pa test_ebin -sname etcd_test -run $(m) start -setcookie cookie_test

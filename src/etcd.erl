@@ -68,8 +68,8 @@ ping()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
- 
-    {ok, #state{}}.
+    ok=mnesia:start(),
+    {ok, #state{},0}.
 
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -108,6 +108,11 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_info(timeout, State) ->
+    mnesia:wait_for_tables([db_application_spec], 10*1000), 
+    {noreply, State};
+
+   
 handle_info(Info, State) ->
     io:format("unmatched match~p~n",[{Info,?MODULE,?LINE}]), 
     {noreply, State}.

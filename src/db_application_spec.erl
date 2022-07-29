@@ -2,16 +2,9 @@
 -import(lists, [foreach/2]).
 -compile(export_all).
 
+-include("db_application_spec.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
--define(TABLE,application_spec).
--define(RECORD,application_spec).
--record(application_spec,{
-			  name,
-			  vsn,
-			  gitpath,
-			  cmd
-			 }).
 create_table(NodeList)->
     mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)},
 				 {disc_copies,NodeList}]),

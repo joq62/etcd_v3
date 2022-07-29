@@ -31,6 +31,7 @@ init([]) ->
                  period => 1},
     ChildSpecs = [#{id=>etcd,
 		    start=>{etcd,start,[]}}],
+%     ChildSpecs = [],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
