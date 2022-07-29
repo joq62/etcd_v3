@@ -1,0 +1,9 @@
+-define(TABLE,deployment_info).
+-define(RECORD,deployment_info).
+-record(deployment_info,{
+			 name,
+			 vsn,
+			 appl_specs,
+			 num_instances,
+			 directive
+			}).

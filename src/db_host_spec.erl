@@ -3,18 +3,7 @@
 -compile(export_all).
 
 -include_lib("stdlib/include/qlc.hrl").
-
--define(TABLE,host_spec).
--define(RECORD,host_spec).
--record(host_spec,{
-		   hostname,
-		   local_ip,
-		   public_ip,
-		   ssh_port,
-		   uid,
-		   passwd,
-		   application_config
-		  }).
+-include("db_host_spec.hrl").
 
 create_table(NodeList)->
     mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)},

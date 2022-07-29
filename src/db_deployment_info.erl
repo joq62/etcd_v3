@@ -3,16 +3,7 @@
 -compile(export_all).
 
 -include_lib("stdlib/include/qlc.hrl").
-
--define(TABLE,deployment_info).
--define(RECORD,deployment_info).
--record(deployment_info,{
-			 name,
-			 vsn,
-			 appl_specs,
-			 num_instances,
-			 directive
-			}).
+-include("db_deployment_info.hrl").
 
 create_table(NodeList)->
     mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)},

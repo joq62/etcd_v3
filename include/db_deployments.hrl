@@ -1,0 +1,10 @@
+-define(TABLE,deployments).
+-define(RECORD,deployments).
+-record(deployments,{
+		     name,
+		     controllers,
+		     workers,
+		     cookie,
+		     hosts,
+		     deployments
+		    }).

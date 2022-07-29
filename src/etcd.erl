@@ -109,7 +109,10 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info(timeout, State) ->
-    mnesia:wait_for_tables([db_application_spec], 10*1000), 
+    mnesia:wait_for_tables([db_application_spec,
+			    db_deployment_info,
+			    db_deployments,
+			    db_host_spec], 60*1000), 
     {noreply, State};
 
    

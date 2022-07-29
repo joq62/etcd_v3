@@ -24,6 +24,9 @@ install(Nodes) ->
     rpc:multicall(Nodes, application, start, [mnesia]),
     %% Start create tables for etcd
     db_application_spec:create_table(Nodes),
+    db_deployment_info:create_table(Nodes),
+    db_deployments:create_table(Nodes),
+    db_host_spec:create_table(Nodes),
     % End create tables for etcd
     rpc:multicall(Nodes, application, stop, [mnesia]).
 %% internal functions
