@@ -68,7 +68,12 @@ ping()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    ok=mnesia:start(),
+    mnesia:stop(),
+    mnesia:start(),
+    
+    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
+				 {"OK, started server  ",?MODULE,node()}]), 
+
     {ok, #state{},0}.
 
 %% --------------------------------------------------------------------

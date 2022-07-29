@@ -13,7 +13,6 @@
 -export([install/1]).
 
 start(normal, _StartArgs) ->
-    io:format(" ~p~n",[{?MODULE,?FUNCTION_NAME}]),
     etcd_sup:start_link().
 
 stop(_State) ->
