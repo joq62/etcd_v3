@@ -93,6 +93,9 @@ load_host([HostName|T],Acc)->
 restart_mnesia(NodeToStart,GatewayNode,Nodes)->
     
     rpc:call(NodeToStart,mnesia,stop,[]),
+ CreateSchema=rpc:call(NodeToStart,mnesia,delete_schema,[Nodes]),
+    io:format("DBG CreateSchema ~p~n",[{CreateSchema,?MODULE,?FUNCTION_NAME,?LINE}]),
+
     CreateSchema=rpc:call(NodeToStart,mnesia,create_schema,[Nodes]),
     io:format("DBG CreateSchema ~p~n",[{CreateSchema,?MODULE,?FUNCTION_NAME,?LINE}]),
 

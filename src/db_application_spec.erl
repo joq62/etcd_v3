@@ -5,6 +5,11 @@
 -include("db_application_spec.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
+create_table()->
+    mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)}
+				]),
+    mnesia:wait_for_tables([?TABLE], 20000).
+
 create_table(NodeList)->
     mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)},
 				 {disc_copies,NodeList}]),
