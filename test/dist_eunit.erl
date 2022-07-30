@@ -33,9 +33,12 @@ start()->
     
     %% Intial install
     rpc:call(InitialNode,etcd_app,install,[Nodes]),
-    [rpc:call(Node,application,start,[etcd])||Node<-Nodes],
-    rpc:call(InitialNode,mnesia,wait_for_tables,[[db_application_spec], 10*1000]),
-  %  io:format("InitialNode: mnesia:system_info() ~p~n",[lists:sort(rpc:call(InitialNode,mnesia,system_info,[tables]))]),
+  %  AppStartEtcd=[rpc:call(Node,application,start,[etcd])||Node<-Nodes],
+    AppStartEtcd=[rpc:cast(Node,application,start,[etcd])||Node<-Nodes],
+    io:format("AppStartEtcd ~p~n",[{AppStartEtcd,?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  rpc:call(InitialNode,mnesia,wait_for_tables,[[db_application_spec], 60*1000]),
+    WaitTable=[rpc:call(Node,mnesia,wait_for_tables,[[db_application_spec], 60*1000])||Node<-Nodes],
+    io:format("WaitTable  ~p~n",[{WaitTable,?MODULE,?FUNCTION_NAME,?LINE}]),
     
     ['c100@c100','c200@c100',
      'c201@c100','c202@c100','c300@c100']=lists:sort(rpc:call(InitialNode,mnesia,system_info,[running_db_nodes])),

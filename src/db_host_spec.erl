@@ -111,7 +111,7 @@ do(Q) ->
 
 %%-------------------------------------------------------------------------
 init_table(SourceNode,DestNode)->
-    ok=rpc:call(DestNode,?MODULE,create_table,[[DestNode]]),
+ %   ok=rpc:call(DestNode,?MODULE,create_table,[[DestNode]]),
     AllHostNames=rpc:call(SourceNode,config,host_all_hostnames,[]),
     init_table(AllHostNames,SourceNode,DestNode).
     

@@ -37,5 +37,8 @@ eunit:
 	rebar3 compile;
 	cp _build/default/lib/*/ebin/* ebin;
 	git clone https://github.com/joq62/config.git;
+	erlc -o test_ebin ../host/src/install.erl;
+	erlc -o test_ebin ../host/src/lib_host.erl;
+	cp ../common/ebin/* test_ebin;
 	erlc -I include -o test_ebin test/*.erl;
 	erl -pa * -pa config/ebin -pa ebin -pa test_ebin -sname etcd_test -run $(m) start -setcookie cookie_test
