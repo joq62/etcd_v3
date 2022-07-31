@@ -73,34 +73,38 @@ start()->
 
     % 6.Check all nodes first time
     io:format("6. Check all nodes first time ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
-  
- %    ['c100@c100','c200@c200','c202@c202']=lists:sort(rpc:call(InitialNode,mnesia,system_info,[running_db_nodes],5000)),
-    ok=check_all([InitialNode|NodesToAdd]),
-
-
-  io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
-    timer:sleep(2000),
-
+    Nodes=[InitialNode|NodesToAdd],
+    ok=check_all(Nodes),  
 
     %% 7. Kill Initial Node
-    io:format("5 Kill initialnode test ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
-    io:format("DBG Kill Initial Node ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("7. Kill initialnode test ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    rpc:call(InitialNode,init,stop,[]),
+    timer:sleep(2000),
+ 
 
-  %%  RmMneisa=os:cmd("rm -r "++"Mnesia."++atom_to_list(InitialNode)),
-%    io:format("DBG RmMneisa  ~p~n",[{RmMneisa,?MODULE,?FUNCTION_NAME,?LINE}]),
- %   rpc:call(InitialNode,init,stop,[]),
-    timer:sleep(10*1000),
-   
-    ['c200@c100',
-     'c201@c100','c202@c100','c300@c100']=lists:sort(rpc:call(c200@c100,mnesia,system_info,[running_db_nodes])),
+    [InitialNode]=[Node||Node<-Nodes,
+			 {ok,"https://github.com/joq62/etcd.git"}=/=rpc:call(Node,db_application_spec,read,[gitpath,"etcd.spec"])],   
 
-  %  [InitialNode]=[Node||Node<-Nodes,
-%			 {ok,"https://github.com/joq62/etcd.git"}=/=rpc:call(Node,db_application_spec,read,[gitpath,"etcd.spec"])],
-
-    %% 8. Restart InitialNode
-    io:format(" 8. Restart InitialNode ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    SortedNodesToAdd=lists:sort(NodesToAdd),
+    [NewInitialNode|_]=NodesToAdd,
+    SortedNodesToAdd=lists:sort(rpc:call(NewInitialNode,mnesia,system_info,[running_db_nodes])),
+    
+    % 8. Restart InitialNode 
+    io:format("8. Restart InitialNode  ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    {ok,InitialNode,InitialHostName}=lib_host:create_host_vm(InitialHostName),
+    LoadStartCommon1=load_start_appl(InitialNode,InitialHostName,"common.spec","common"),
+    io:format("DBG: LoadStartCommon1 ~p~n",[{LoadStartCommon1,?MODULE,?FUNCTION_NAME,?LINE}]),
+    LoadStartEtcd1=load_start_appl(InitialNode,InitialHostName,"etcd.spec","etcd"),
+    io:format("DBG: LoadStartEtcd1 ~p~n",[{LoadStartEtcd1,?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    AddExtraNodes1=add_extra_nodes(NewInitialNode,[InitialNode],StorageType),
+    io:format("DBG AddExtraNodes1 ~p~n",[{AddExtraNodes1,?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    ok=check_all(Nodes),  
+    
+%    io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+%    timer:sleep(2000),
   
-
     io:format("TEST OK! ~p~n",[?MODULE]),
 
     ok.
