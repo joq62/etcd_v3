@@ -38,18 +38,33 @@ start()->
     AliveHosts=lists:sort(lib_host:which_servers_alive()),
     io:format("DBG: AliveHosts ~p~n",[{AliveHosts,?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    NodeHostBaseApplDirList=start_check_hosts(AliveHosts),
+    HostStart=[lib_host:create_host_vm(HostName)||HostName<-AliveHosts],
+    io:format("DBG: HostStart ~p~n",[{HostStart,?MODULE,?FUNCTION_NAME,?LINE}]),
+    NodeHostList=[{Node,HostName}||{ok,Node,HostName}<-HostStart],
+    io:format("DBG: NodeHostList ~p~n",[{NodeHostList,?MODULE,?FUNCTION_NAME,?LINE}]),
+ 
+   
+    io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+    timer:sleep(2000),
+
+
+   NodeHostBaseApplDirList=start_check_hosts(AliveHosts),
     io:format("DBG: NodeHostBaseApplDirList ~p~n",[{NodeHostBaseApplDirList,?MODULE,?FUNCTION_NAME,?LINE}]),
 
+    % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
+
+    appl:git_clone(NodeLocal,?TestAddGitPath,?TestAddGitDir),
+ 
+    %% test_add
+    ok=appl:load(NodeLocal,test_add,["test_add/ebin"]),
+    ok=appl:start(NodeLocal,test_add),
 
     % 3.Start InitalNode
 
 
 
 
-    
-    io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
-    timer:sleep(2000),
+ 
     
 
     %% 1. Start vms 
