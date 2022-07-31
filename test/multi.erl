@@ -46,7 +46,11 @@ start()->
    
    
     % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
+    %% Common
    
+    LoadStartCommon=[{load_start_appl(Node,HostName,"common.spec"),Node,HostName}||{Node,HostName}<-NodeHostList],
+    io:format("DBG: LoadStart ~p~n",[{LoadStart,?MODULE,?FUNCTION_NAME,?LINE}]),
+
     [{InitialNode,InitialHostName}|_]=NodeHostList,
    
     
@@ -221,6 +225,8 @@ start()->
 
 
 
+
+
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
@@ -301,8 +307,31 @@ check_all(Nodes)->
     ok.
 
 
+%% --------------------------------------------------------------------
+%% Function: available_hosts()
+%% Description: Based on hosts.config file checks which hosts are avaible
+%% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
+%% --------------------------------------------------------------------
+load_start_appl(Node,BaseDir,ApplSpec)->
+    {ok,AppId}=rpc:call(node(),db_application_spec,read,[name,ApplSpec]),
+    {ok,GitPath}=rpc:call(node(),db_application_spec,read,[gitpath,ApplSpec]),
+    App=list_to_atom(AppId),
 
+    GitDir=filename:join(BaseDir,AppId),
+    RmGitDir=rpc:call(InitialNode,os,cmd,["rm -rf "++GitDir]),
+    io:format("DBG: RmGitDir ~p~n",[{GitDir,RmGitDir,?MODULE,?FUNCTION_NAME,?LINE}]),
+    MakeGitDir=rpc:call(InitialNode,file,make_dir,[GitDir]),
+    io:format("DBG: MakeGitDir ~p~n",[{MakeGitDir,?MODULE,?FUNCTION_NAME,?LINE}]),
+    GitClone=rpc:call(node(),appl,git_clone_to_dir,[Node,GitPath,GitDir]),
+    io:format("DBG: GitClone ~p~n",[{GitClone,?MODULE,?FUNCTION_NAME,?LINE}]),
 
+    Load=rpc:call(node(),appl,load,[Node,App,[filename:join(GitDir,"ebin")]]),
+    io:format("DBG: Load ~p~n",[{Load,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    Start=rpc:call(node(),appl,start,[Node,App]),
+    io:format("DBG: Start ~p~n",[{Start,?MODULE,?FUNCTION_NAME,?LINE}]),
+    pong=rpc:call(Node,App,ping,[]),
+    ok.
 
 %% --------------------------------------------------------------------
 %% Function: available_hosts()
