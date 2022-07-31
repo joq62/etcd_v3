@@ -41,9 +41,7 @@ start()->
     io:format("DBG: HostStart ~p~n",[{HostStart,?MODULE,?FUNCTION_NAME,?LINE}]),
     NodeHostList=[{Node,HostName}||{ok,Node,HostName}<-HostStart],
     io:format("DBG: NodeHostList ~p~n",[{NodeHostList,?MODULE,?FUNCTION_NAME,?LINE}]),
- 
-   
-   
+     
     % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
     %% Common
    
@@ -53,16 +51,35 @@ start()->
     LoadStartEtcd=[{load_start_appl(Node,HostName,"etcd.spec","etcd"),Node,HostName}||{Node,HostName}<-NodeHostList],
     io:format("DBG: LoadStartEtcd ~p~n",[{LoadStartEtcd,?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
-    timer:sleep(2000),
 
+
+    % 3.On the IntialNode install load mnesia and table with content 
+     io:format("3.On the IntialNode install load mnesia and table with content ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+   
+    [{InitialNode,InitialHostName}|RestNodeHostsToBeAdded]=NodeHostList,
+    ok=install_mnesia(InitialNode),
+    ok=add_info_tables(TestNode,InitialNode),
+    io:format("3. InitialNode mnesia:System_info ~p~n",[{InitialNode,rpc:call(InitialNode ,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+   
+
+    % 4. Add nodes
+    io:format("4. InitialNode starts mnesia on RestNodes  ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    NodesToAdd=[Node||{Node,HostName}<-RestNodeHostsToBeAdded],
+    io:format("DBG InitialNode starts mnesia on  NodesToAdd ~p~n",[{InitialNode,NodesToAdd,?MODULE,?FUNCTION_NAME,?LINE}]),
+    AddExtraNodes=add_extra_nodes(InitialNode,NodesToAdd,StorageType),
+    io:format("DBG AddExtraNodes ~p~n",[{AddExtraNodes,?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+  
 
     % 6.Check all nodes first time
     io:format("6. Check all nodes first time ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
   
  %    ['c100@c100','c200@c200','c202@c202']=lists:sort(rpc:call(InitialNode,mnesia,system_info,[running_db_nodes],5000)),
-  %  ok=check_all(Nodes),
+    ok=check_all([InitialNode|NodesToAdd]),
 
+
+  io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+    timer:sleep(2000),
 
 
     %% 7. Kill Initial Node
@@ -128,6 +145,30 @@ add_extra_node(InitialNode,NodeToAdd,StorageType) ->
     end,
     Result.
 		
+%% --------------------------------------------------------------------
+%% Function:start/0 
+%% Description: Initiate the eunit tests, set upp needed processes etc
+%% Returns: non
+%% -------------------------------------------------------------------
+add_info_tables(SourceNode,DestNode)->
+     % Init dbases
+    true=rpc:call(SourceNode,code,add_patha,["config/ebin"]),
+    rpc:call(SourceNode,application,start,[config]),
+    %% init 
+    ok=rpc:call(SourceNode,db_application_spec,init_table,[SourceNode,DestNode]),
+    {ok,"https://github.com/joq62/etcd.git"}=rpc:call(DestNode,db_application_spec,read,[gitpath,"etcd.spec"]),
+    
+    ok=rpc:call(SourceNode,db_host_spec,init_table,[SourceNode,DestNode]),
+    ["c100","c200","c201","c202","c300"]=lists:sort(rpc:call(DestNode,db_host_spec,get_all_hostnames,[])),
+
+    ok=rpc:call(SourceNode,db_deployments,init_table,[SourceNode,DestNode]),
+    {ok,["c202"]}=rpc:call(DestNode,db_deployments,read,[hosts,"solis"]),
+
+    ok=rpc:call(SourceNode,db_deployment_info,init_table,[SourceNode,DestNode]),
+    {ok,"solis.depl"}=rpc:call(DestNode,db_deployment_info,read,[name,"solis.depl"]),
+    
+    ok.
+
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
@@ -227,6 +268,30 @@ load_host([HostName|T],Acc)->
 %% Description: Based on hosts.config file checks which hosts are avaible
 %% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
 %% --------------------------------------------------------------------
+install_mnesia(Node)->
+    % 0. Install test node
+    io:format("0. Install test node  ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    %% Start Mnesia
+    MnesiaStopTest=rpc:call(Node,mnesia,stop,[]),
+    io:format("DBG MnesiaStopTest ~p~n",[{MnesiaStopTest,?MODULE,?FUNCTION_NAME,?LINE}]),
+    DeleteSchemaTest=rpc:call(Node,mnesia,delete_schema,[[Node]]),
+    io:format("DBG DeleteSchemaTest ~p~n",[{DeleteSchemaTest,?MODULE,?FUNCTION_NAME,?LINE}]),
+    MnesiaStartTest=rpc:call(Node, mnesia,start, []),
+    io:format("DBG MnesiaStartTest ~p~n",[{MnesiaStartTest,?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    %% Create tables on TestNode
+    DbAppSpecCreate=rpc:call(Node,db_application_spec,create_table,[]),
+    io:format("DBG DbAppSpecCreate ~p~n",[{DbAppSpecCreate,?MODULE,?FUNCTION_NAME,?LINE}]),
+    DbDepInfo=rpc:call(Node,db_deployment_info,create_table,[]),
+    io:format("DBG DbDepInfo ~p~n",[{DbDepInfo,?MODULE,?FUNCTION_NAME,?LINE}]),
+    DbDeps=rpc:call(Node,db_deployments,create_table,[]),
+    io:format("DBG DbDeps ~p~n",[{DbDeps,?MODULE,?FUNCTION_NAME,?LINE}]),
+    DbHostSpec=rpc:call(Node,db_host_spec,create_table,[]),
+    io:format("DBG DbHostSpec ~p~n",[{DbHostSpec,?MODULE,?FUNCTION_NAME,?LINE}]),
+    % End create tables for etcd
+    io:format("0. Install test node  mnesia:System_info ~p~n",[{rpc:call(Node ,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok.
+
 install_test_node(TestNode)->
   % 0. Install test node
     io:format("0. Install test node  ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
