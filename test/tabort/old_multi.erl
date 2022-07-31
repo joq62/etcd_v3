@@ -1,0 +1,223 @@
+%%% -------------------------------------------------------------------
+%%% @author  : Joq Erlang
+%%% @doc: : 
+%%% Created :
+%%% Node end point  
+%%% Creates and deletes Pods
+%%% 
+%%% API-kube: Interface 
+%%% Pod consits beams from all services, app and app and sup erl.
+%%% The setup of envs is
+%%% ------------------ -------------------------------------------------
+-module(old_multi).   
+ 
+-export([start/0]).
+%% --------------------------------------------------------------------
+%% Include files
+%% --------------------------------------------------------------------
+
+%% --------------------------------------------------------------------
+%% Function: available_hosts()
+%% Description: Based on hosts.config file checks which hosts are avaible
+%% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
+%% --------------------------------------------------------------------
+start()->
+    ok=setup(),
+
+    install:init_node(),
+
+   % 1. Stop all host vms
+    AllNodes=[list_to_atom(HostName++"@"++HostName)||HostName<-db_host_spec:get_all_hostnames()],
+    StoppedHostNodes=[{Node,rpc:call(Node,init,stop,[])}||Node<-AllNodes],
+    io:format("DBG: StoppedHostNodes ~p~n",[{StoppedHostNodes,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    % 2. Create host vms and BaseDirs on the living servers
+    AliveHosts=lists:sort(lib_host:which_servers_alive()),
+    io:format("DBG: AliveHosts ~p~n",[{AliveHosts,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    NodeHostBaseApplDirList=start_check_hosts(AliveHosts),
+    Nodes=[Node||{Node,_HostName,_BaseDir,_ApplDir}<-NodeHostBaseApplDirList],
+    ok=init_mnesia(Nodes),    
+    timer:sleep(5000),
+    %
+    {[],[],[],[]}=check_all(Nodes),
+
+    % Kill node and restart
+    [{KilledNode,KilledHost,_,_},{GatewayNode,_GatewayHost,_,_}|_]=NodeHostBaseApplDirList,
+    rpc:call(KilledNode,init,stop,[]),
+    io:format("DBG: KilledNode,KilledHost ~p~n",[{KilledNode,KilledHost,?MODULE,?FUNCTION_NAME,?LINE}]),
+    timer:sleep(2000),
+
+
+    StartInfo2=start_check_hosts([KilledHost]),
+    io:format("DBG: StartInfo2 ~p~n",[{StartInfo2,?MODULE,?FUNCTION_NAME,?LINE}]),
+    RestartMnesia=restart_mnesia(KilledNode,GatewayNode,Nodes),
+    io:format("DBG: RestartMnesia ~p~n",[{RestartMnesia,?MODULE,?FUNCTION_NAME,?LINE}]),
+     {[],[],[],[]}=check_all([KilledNode]),
+    
+   
+    %[rpc:call(Node,init,stop,[])||Node<-Nodes],
+    io:format("TEST OK! ~p~n",[?MODULE]),
+    timer:sleep(1000),
+    ok.
+
+
+%% --------------------------------------------------------------------
+%% Function: available_hosts()
+%% Description: Based on hosts.config file checks which hosts are avaible
+%% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
+%% --------------------------------------------------------------------
+start_check_hosts(AliveHosts)->
+    io:format("DBG: InitialNode,Rest ~p~n",[{AliveHosts,?MODULE,?FUNCTION_NAME,?LINE}]),
+    %% create host vm and load etcd obs , commom etc is not loaded 
+    NodeHostBaseApplDirList=load_host(AliveHosts,[]),
+    io:format("DBG: NodeHostBaseApplDirList  ~p~n",[{NodeHostBaseApplDirList,?MODULE,?FUNCTION_NAME,?LINE}]),
+    NodeHostBaseApplDirList.
+
+load_host([],NodeHostBaseApplDirList)->
+    NodeHostBaseApplDirList;
+load_host([HostName|T],Acc)->
+    {ok,Node,BaseDir}=lib_host:create_host_vm(HostName),
+    {ok,ApplDir}=lib_host:git_load_host(Node,BaseDir),
+   % Delete Mnesia dirs
+    RmMnesia=rpc:call(Node,os,cmd,["rm -r Mnesia.*"]),  
+    io:format("DBG: RmMnesia ~p~n",[{RmMnesia,?MODULE,?FUNCTION_NAME,?LINE}]),
+    timer:sleep(2000),
+    load_host(T,[{Node,HostName,BaseDir,ApplDir}|Acc]).
+
+%% --------------------------------------------------------------------
+%% Function: available_hosts()
+%% Description: Based on hosts.config file checks which hosts are avaible
+%% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
+%% --------------------------------------------------------------------
+restart_mnesia(NodeToStart,GatewayNode,Nodes)->
+    % restart mnesia and just connec to the other nodes
+    rpc:call(NodeToStart,mnesia,stop,[]),
+    Ping=[{Node,rpc:call(NodeToStart,net_adm,ping,[Node])}||Node<-lists:delete(NodeToStart,Nodes)],
+    io:format("DBG: Ping ~p~n",[{Ping,?MODULE,?FUNCTION_NAME,?LINE}]),
+    MnesiaReStart=rpc:call(NodeToStart,mnesia,start,[]),
+    
+ %   CreateSchema=rpc:call(NodeToStart,mnesia,delete_schema,[Nodes]),
+ %   io:format("DBG CreateSchema ~p~n",[{CreateSchema,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+ %   CreateSchema=rpc:call(NodeToStart,mnesia,create_schema,[Nodes]),
+ %   io:format("DBG CreateSchema ~p~n",[{CreateSchema,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+%    MnesiaReStart=rpc:call(NodeToStart,mnesia,start,[]),
+%    io:format("DBG: MnesiaReStart ~p~n",[{MnesiaReStart,?MODULE,?FUNCTION_NAME,?LINE}]),
+%    AddSchemaStable=rpc:call(NodeToStart,mnesia,add_table_copy,[schema,GatewayNode,disc_copies]),
+%    io:format("DBG: AddSchemaStable ~p~n",[{AddSchemaStable,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+%    Tables=rpc:call(GatewayNode,mnesia,system_info,[tables]),
+%    R_add_table_copy=[rpc:call(NodeToStart,mnesia,add_table_copy,[Table, GatewayNode,disc_copies])||Table<-Tables,
+%												    Table/=schema],
+%    io:format(" R_add_table_copy ~p~n",[{ R_add_table_copy,?FUNCTION_NAME,?MODULE,?LINE}]),
+
+    
+ %   WaitForTables=rpc:call(NodeToStart,mnesia,wait_for_tables,[
+%							       [db_application_spec,
+%								db_deployment_info,
+%								db_deployments,
+%								db_host_spec],30*1000]),     
+ %   io:format("DBG: WaitForTables ~p~n",[{WaitForTables,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    io:format("DBG:NodeToStart, mnesia_system_info ~p~n",[{rpc:call(NodeToStart,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+   
+    ok.
+
+
+
+%% --------------------------------------------------------------------
+%% Function: available_hosts()
+%% Description: Based on hosts.config file checks which hosts are avaible
+%% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
+%% --------------------------------------------------------------------
+init_mnesia(Nodes)->
+    [InitialNode|_Rest]=Nodes,
+    StorageType=disc_copies,
+    MultiMnesiaStop_1=rpc:multicall(Nodes,mnesia,stop,[]),
+    io:format("DBG MultiMnesiaStop_1 ~p~n",[{MultiMnesiaStop_1,?MODULE,?FUNCTION_NAME,?LINE}]),
+   
+    CreateSchema=rpc:call(InitialNode,mnesia,create_schema,[Nodes]),
+    io:format("DBG CreateSchema ~p~n",[{CreateSchema,?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    MultiMnesiaStart_1=rpc:multicall(Nodes,mnesia,start,[]),
+    io:format("DBG MultiMnesiaStart_1 ~p~n",[{MultiMnesiaStart_1,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    %% Start create tables for etcd
+    ok=rpc:call(InitialNode,db_application_spec,create_table,[Nodes,StorageType],20*1000),
+    io:format("DBG db_application_spec ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    ok=rpc:call(InitialNode,db_host_spec,create_table,[Nodes,StorageType],20*1000),
+    io:format("DBG db_host_spec ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    ok=rpc:call(InitialNode,db_deployments,create_table,[Nodes,StorageType],20*1000),
+    io:format("DBG db_deployments ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    ok=rpc:call(InitialNode,db_deployment_info,create_table,[Nodes,StorageType],20*1000),
+    io:format("DBG db_deployments ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    % End create tables for etcd
+  
+    % Initiate tables
+    ok=rpc:call(node(),db_application_spec,init_table,[node(),InitialNode],20*1000),
+    {ok,"https://github.com/joq62/etcd.git"}=rpc:call(InitialNode,db_application_spec,read,[gitpath,"etcd.spec"]),
+    io:format("DBG db_application_spec ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    ok=rpc:call(node(),db_host_spec,init_table,[node(),InitialNode]),
+    ["c100","c200","c201","c202","c300"]=lists:sort(rpc:call(InitialNode,db_host_spec,get_all_hostnames,[])),
+    io:format("DBG db_host_spec ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    ok=rpc:call(node(),db_deployments,init_table,[node(),InitialNode]),
+    {ok,["c202"]}=rpc:call(InitialNode,db_deployments,read,[hosts,"solis"]),
+    io:format("DBG db_deployments ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    ok=rpc:call(node(),db_deployment_info,init_table,[node(),InitialNode]),
+    {ok,"solis.depl"}=rpc:call(InitialNode,db_deployment_info,read,[name,"solis.depl"]),
+    io:format("DBG db_deployment_info ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok.
+
+%% --------------------------------------------------------------------
+%% Function: available_hosts()
+%% Description: Based on hosts.config file checks which hosts are avaible
+%% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
+%% --------------------------------------------------------------------
+check_all(Nodes)->
+    DbAppSpec=[Node||Node<-Nodes,
+	      {ok,"https://github.com/joq62/etcd.git"}=/=rpc:call(Node,db_application_spec,read,[gitpath,"etcd.spec"])],
+    
+    io:format("DBG: DbAppSpec ~p~n",[{DbAppSpec,?MODULE,?FUNCTION_NAME,?LINE}]),
+   % []=DbAppSpec,
+
+    DbHostSpec=[Node||Node<-Nodes,
+		      ["c100","c200","c201","c202","c300"]=/=lists:sort(rpc:call(Node,db_host_spec,get_all_hostnames,[]))],
+    io:format("DBG: DbHostSpec ~p~n",[{DbHostSpec,?MODULE,?FUNCTION_NAME,?LINE}]),
+   % []=DbHostSpec,
+
+    DbDepl=[Node||Node<-Nodes,
+	      {ok,["c202"]}=/=rpc:call(Node,db_deployments,read,[hosts,"solis"])],
+    io:format("DBG: DbDepl ~p~n",[{DbDepl,?MODULE,?FUNCTION_NAME,?LINE}]),
+   % []=DbDepl,
+    DbDEplInfo=[Node||Node<-Nodes,
+	      {ok,"solis.depl"}=/=rpc:call(Node,db_deployment_info,read,[name,"solis.depl"])],
+   
+   io:format("DBG: DbDEplInfo ~p~n",[{DbDEplInfo,?MODULE,?FUNCTION_NAME,?LINE}]),    
+   % []=DbDEplInfo,
+    {DbAppSpec,DbHostSpec,DbDepl,DbDEplInfo}.
+%% --------------------------------------------------------------------
+%% Function: available_hosts()
+%% Description: Based on hosts.config file checks which hosts are avaible
+%% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
+%% --------------------------------------------------------------------
+setup()->
+  
+    % Simulate host
+  %  R=rpc:call(node(),test_nodes,start_nodes,[],2000),
+%    [Vm1|_]=test_nodes:get_nodes(),
+
+%    Ebin="ebin",
+ %   true=rpc:call(Vm1,code,add_path,[Ebin],5000),
+ 
+   % R.
+    ok.
