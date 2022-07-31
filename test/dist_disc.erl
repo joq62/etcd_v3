@@ -9,7 +9,7 @@
 %%% Pod consits beams from all services, app and app and sup erl.
 %%% The setup of envs is
 %%% -------------------------------------------------------------------
--module(dist_eunit).   
+-module(dist_disc).   
  
 -export([start/0]).
 %% --------------------------------------------------------------------
@@ -42,7 +42,7 @@ start()->
     %% 2. Intial install
     io:format("2. Intial install ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
    
-    StorageType=ram_copies,
+    StorageType=disc_copies,
     MnesiaStop=rpc:multicall(Nodes,mnesia,stop,[]),
     io:format("DBG MnesiaStop ~p~n",[{MnesiaStop,?MODULE,?FUNCTION_NAME,?LINE}]),
     DeleteSchema=[rpc:call(Node,mnesia,delete_schema,[[Node]])||Node<-Nodes],
