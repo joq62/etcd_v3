@@ -15,7 +15,8 @@
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
-
+-include_lib("eunit/include/eunit.hrl").
+-include_lib("kernel/include/logger.hrl").
 %% --------------------------------------------------------------------
 %% Function: available_hosts()
 %% Description: Based on hosts.config file checks which hosts are avaible
@@ -47,21 +48,123 @@ start()->
     % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
     %% Common
    
-    LoadStartCommon=[{load_start_appl(Node,HostName,"common.spec","common"),Node,HostName}||{Node,HostName}<-NodeHostList],
-    io:format("DBG: LoadStartCommon ~p~n",[{LoadStartCommon,?MODULE,?FUNCTION_NAME,?LINE}]),
+    LoadStart=[{load_start_appl(Node,HostName,"common.spec","common"),Node,HostName}||{Node,HostName}<-NodeHostList],
+    io:format("DBG: LoadStart ~p~n",[{LoadStart,?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    LoadStartEtcd=[{load_start_appl(Node,HostName,"etcd.spec","etcd"),Node,HostName}||{Node,HostName}<-NodeHostList],
-    io:format("DBG: LoadStartEtcd ~p~n",[{LoadStartEtcd,?MODULE,?FUNCTION_NAME,?LINE}]),
+    [{InitialNode,InitialHostName}|_]=NodeHostList,
+   
+    
+    {ok,CommonGitPath}=rpc:call(TestNode,db_application_spec,read,[gitpath,"common.spec"]),
+    GitPath=CommonGitPath,
+    BaseDir=InitialHostName,
+    GitDir=filename:join(BaseDir,"common"),
+    RmCommonInitial=rpc:call(InitialNode,os,cmd,["rm -rf "++GitDir]),
+    io:format("DBG: RmCommonInitial ~p~n",[{RmCommonInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+    MakeDirCommonInitial=rpc:call(InitialNode,file,make_dir,[GitDir]),
+    io:format("DBG: MakeDirCommonInitial ~p~n",[{MakeDirCommonInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+    CommonGitCloneInitial=rpc:call(TestNode,appl,git_clone_to_dir,[InitialNode,GitPath,GitDir]),
+    io:format("DBG: CommonGitCloneInitial ~p~n",[{CommonGitCloneInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    LoadCommonInitial=rpc:call(TestNode,appl,load,[InitialNode,common,[filename:join(GitDir,"ebin")]]),
+    io:format("DBG: LoadCommonInitial ~p~n",[{LoadCommonInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    StartCommonInitial=rpc:call(TestNode,appl,start,[InitialNode,common]),
+    io:format("DBG: StartCommonInitial ~p~n",[{StartCommonInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+    pong=rpc:call(InitialNode,common,ping,[]),
 
     io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
     timer:sleep(2000),
 
 
+    {ok,EtcdGitPath}=rpc:call(TestNode,db_application_spec,read,[gitpath,"etcd.spec"]),
+    EtcdGitDir="etcd",
+
+    
+    %appl:git_clone(NodeLocal,?TestAddGitPath,?TestAddGitDir),
+ 
+    %% test_add
+   % ok=appl:load(NodeLocal,test_add,["test_add/ebin"]),
+ %   ok=appl:start(NodeLocal,test_add),
+
+    % 3.Start InitalNode
+
+
+
+
+ 
+    
+
+    %% 1. Start vms 
+    InitialNode=glurk,
+    %% Start create tables on initial
+    DbAppSpecCreate=rpc:call(InitialNode,db_application_spec,create_table,[]),
+    io:format("DBG DbAppSpecCreate ~p~n",[{DbAppSpecCreate,?MODULE,?FUNCTION_NAME,?LINE}]),
+    DbDepInfo=rpc:call(InitialNode,db_deployment_info,create_table,[]),
+    io:format("DBG DbDepInfo ~p~n",[{DbDepInfo,?MODULE,?FUNCTION_NAME,?LINE}]),
+    DbDeps=rpc:call(InitialNode,db_deployments,create_table,[]),
+    io:format("DBG DbDeps ~p~n",[{DbDeps,?MODULE,?FUNCTION_NAME,?LINE}]),
+    DbHostSpec=rpc:call(InitialNode,db_host_spec,create_table,[]),
+    io:format("DBG DbHostSpec ~p~n",[{DbHostSpec,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    % End create tables for etcd
+    io:format("3.  mnesia:System_info ~p~n",[{rpc:call(InitialNode,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+
+   
+
+     % 1. Init test setup
+    io:format("1. Init test setup ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    InitStop=rpc:multicall([c100@c100,c200@c100,c201@c100,c202@c100,c300@c100],init,stop,[]),
+    io:format("DBG InitStop ~p~n",[{InitStop,?MODULE,?FUNCTION_NAME,?LINE}]),
+    RmMneisa_0=[os:cmd("rm -r "++"Mnesia."++atom_to_list(N))||N<-[c100@c100,c200@c100,c201@c100,c202@c100,c300@c100]],
+    io:format("DBG RmMneisa_0 ~p~n",[{RmMneisa_0,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=setup(),
+    Nodes=test_nodes:get_nodes(),
+    [c100@c100,c200@c100,c201@c100,c202@c100,c300@c100]=Nodes, 
+    [InitialNode|ExtraNodes]=Nodes,
+    
+    NodeNames=test_nodes:get_nodenames(),
+    ["c100","c200","c201","c202","c300"]=NodeNames,
+    
+    %% 2. Intial install
+    io:format("2. Intial install ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+   
+    StorageType=ram_copies,
+    MnesiaStop=rpc:multicall(Nodes,mnesia,stop,[]),
+    io:format("DBG MnesiaStop ~p~n",[{MnesiaStop,?MODULE,?FUNCTION_NAME,?LINE}]),
+    DeleteSchema=[rpc:call(Node,mnesia,delete_schema,[[Node]])||Node<-Nodes],
+    io:format("DBG DeleteSchema ~p~n",[{DeleteSchema,?MODULE,?FUNCTION_NAME,?LINE}]),
+%    MnesiaStart0=rpc:multicall(Nodes, mnesia,start, []),
+    MnesiaStart0=[rpc:call(Node, mnesia,start, [])||Node<-[InitialNode]],
+    io:format("DBG MnesiaStart0 ~p~n",[{MnesiaStart0,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+%    io:format("2. running ~p~n",[{rpc:call(InitialNode,mnesia,system_info,[running_db_nodes]),?MODULE,?FUNCTION_NAME,?LINE}]),
+%    io:format("2.test all  running ~p~n",[{[{Node,rpc:call(Node,mnesia,system_info,[running_db_nodes])}||Node<-Nodes],?MODULE,?FUNCTION_NAME,?LINE}])
+
+    io:format("2. Intial install mnesia:System_info ~p~n",[{rpc:call(InitialNode,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   rpc:multicall(Nodes, application, stop, [mnesia]),
+    
+
+   
+
+    %% 4. Add info tables 
+    io:format(" 4. Add info tables  ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=add_info_tables(InitialNode),
+    io:format( "4. Add info tables mnesia:System_info ~p~n",[{rpc:call(InitialNode,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+    %% 5. add nodes!!
+    io:format("5. add nodes!! ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    AddExtraNodes=add_extra_nodes(InitialNode,ExtraNodes,StorageType),
+    io:format("DBG AddExtraNodes ~p~n",[{AddExtraNodes,?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    io:format("5. add nodes!!  mnesia:System_info ~p~n",[{rpc:call(InitialNode,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+    
     % 6.Check all nodes first time
     io:format("6. Check all nodes first time ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
   
- %    ['c100@c100','c200@c200','c202@c202']=lists:sort(rpc:call(InitialNode,mnesia,system_info,[running_db_nodes],5000)),
-  %  ok=check_all(Nodes),
+     ['c100@c100','c200@c100',
+      'c201@c100','c202@c100','c300@c100']=lists:sort(rpc:call(InitialNode,mnesia,system_info,[running_db_nodes],5000)),
+    ok=check_all(Nodes),
 
 
 
@@ -69,23 +172,53 @@ start()->
     io:format("5 Kill initialnode test ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
     io:format("DBG Kill Initial Node ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
 
-  %%  RmMneisa=os:cmd("rm -r "++"Mnesia."++atom_to_list(InitialNode)),
-%    io:format("DBG RmMneisa  ~p~n",[{RmMneisa,?MODULE,?FUNCTION_NAME,?LINE}]),
- %   rpc:call(InitialNode,init,stop,[]),
+    RmMneisa=os:cmd("rm -r "++"Mnesia."++atom_to_list(InitialNode)),
+    io:format("DBG RmMneisa  ~p~n",[{RmMneisa,?MODULE,?FUNCTION_NAME,?LINE}]),
+    rpc:call(InitialNode,init,stop,[]),
     timer:sleep(10*1000),
    
     ['c200@c100',
      'c201@c100','c202@c100','c300@c100']=lists:sort(rpc:call(c200@c100,mnesia,system_info,[running_db_nodes])),
 
-  %  [InitialNode]=[Node||Node<-Nodes,
-%			 {ok,"https://github.com/joq62/etcd.git"}=/=rpc:call(Node,db_application_spec,read,[gitpath,"etcd.spec"])],
+    [InitialNode]=[Node||Node<-Nodes,
+			 {ok,"https://github.com/joq62/etcd.git"}=/=rpc:call(Node,db_application_spec,read,[gitpath,"etcd.spec"])],
 
     %% 8. Restart InitialNode
     io:format(" 8. Restart InitialNode ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    {ok,InitialNode}=test_nodes:start_slave("c100"),
+    [_,SecondNode|_]=Nodes,
+    AddIntialAgain=add_extra_nodes(SecondNode,[InitialNode],StorageType),
+    io:format("DBG AddIntialAgain  ~p~n",[{AddIntialAgain,?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  rpc:call(InitialNode,mnesia,delete_schema,[[InitialNode]]),  
+  %  rpc:call(InitialNode,mnesia,start,[]),  
+%  ok=rpc:call(SecondNode,erlang,apply,[rpc,call,[InitialNode,mnesia,start,[]]]),
+  %  Ping2= [rpc:call(Node,net_adm,ping,[InitialNode])||Node<-lists:delete(InitialNode,Nodes)],
   
+%    io:format("DBG Ping2  ~p~n",[{Ping2,?MODULE,?FUNCTION_NAME,?LINE}]),
+    WaitTable2=rpc:call(InitialNode,mnesia,wait_for_tables,[[db_application_spec], 10*1000]),
+    io:format("DBG WaitTable2  ~p~n",[{WaitTable2,?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("DBG InitialNode mnesia,system_info,[]  ~p~n",[{rpc:call(InitialNode,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("DBG SecondNode  mnesia,system_info,[]  ~p~n",[{rpc:call(SecondNode,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
 
+
+     []=[Node||Node<-Nodes,
+	       {ok,"https://github.com/joq62/etcd.git"}=/=rpc:call(Node,db_application_spec,read,[gitpath,"etcd.spec"])],
+
+%% 
+
+
+   % shutdown_ok=rpc:call(c_0@c100,leader_server,stop,[],1000),
+   % timer:sleep(2000),
+%    N0=rpc:call(N5,leader_server,who_is_leader,[],200),
+ %   rpc:cast(N0,init,stop,[]),
+  %  timer:sleep(2000),  
+  %  N1=rpc:call(N5,leader_server,who_is_leader,[],200),
+  %  {ok,N0}=start_slave(NN0),
+  %  ok=start_leader([N0],Nodes),
+  %  timer:sleep(2000),  
+  %  N0=rpc:call(N5,leader_server,who_is_leader,[],200),
     io:format("TEST OK! ~p~n",[?MODULE]),
-
+  %  init:stop(),
     ok.
 
 

@@ -68,13 +68,7 @@ ping()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    mnesia:stop(),
-    mnesia:start(),
-    mnesia:wait_for_tables([db_application_spec,
-			    db_deployment_info,
-			    db_deployments,
-			    db_host_spec], 30*1000),     
- 
+    
    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 				 {"OK, started server  ",?MODULE,node()}]), 
     {ok, #state{}}.
