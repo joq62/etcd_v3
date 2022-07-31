@@ -10,9 +10,9 @@ create_table()->
 				]),
     mnesia:wait_for_tables([?TABLE], 20000).
 
-create_table(NodeList)->
+create_table(NodeList,StorageType)->
     mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)},
-				 {disc_copies,NodeList}]),
+				 {StorageType,NodeList}]),
     mnesia:wait_for_tables([?TABLE], 20000).
 
 add_node(Node,StorageType)->

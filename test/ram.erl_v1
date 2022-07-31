@@ -9,7 +9,7 @@
 %%% Pod consits beams from all services, app and app and sup erl.
 %%% The setup of envs is
 %%% -------------------------------------------------------------------
--module(multi).   
+-module(ram).   
  
 -export([start/0]).
 %% --------------------------------------------------------------------
@@ -23,6 +23,7 @@
 %% --------------------------------------------------------------------
 start()->
     ok=setup(),
+
 
     install:init_node(),
 
@@ -62,6 +63,17 @@ start()->
     ok.
 
 
+install_init_node()->
+    ok=application:start(config),
+    etcd_app:install([InitNode]),
+    
+    
+    application:start(etcd),
+    mnesia:wait_for_tables([db_application_spec], 20*1000),
+    [InitNode]=mnesia:system_info(running_db_nodes),
+    io:format("mnesia:system_info ~p~n",[mnesia:system_info()]),
+
+
 %% --------------------------------------------------------------------
 %% Function: available_hosts()
 %% Description: Based on hosts.config file checks which hosts are avaible
@@ -93,9 +105,6 @@ load_host([HostName|T],Acc)->
 restart_mnesia(NodeToStart,GatewayNode,Nodes)->
     
     rpc:call(NodeToStart,mnesia,stop,[]),
- CreateSchema=rpc:call(NodeToStart,mnesia,delete_schema,[Nodes]),
-    io:format("DBG CreateSchema ~p~n",[{CreateSchema,?MODULE,?FUNCTION_NAME,?LINE}]),
-
     CreateSchema=rpc:call(NodeToStart,mnesia,create_schema,[Nodes]),
     io:format("DBG CreateSchema ~p~n",[{CreateSchema,?MODULE,?FUNCTION_NAME,?LINE}]),
 
