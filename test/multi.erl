@@ -44,20 +44,44 @@ start()->
     io:format("DBG: NodeHostList ~p~n",[{NodeHostList,?MODULE,?FUNCTION_NAME,?LINE}]),
  
    
+   
+    % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
+   
+    [{InitialNode,InitialHostName}|_]=NodeHostList,
+   
+    
+    {ok,CommonGitPath}=rpc:call(TestNode,db_application_spec,read,[gitpath,"common.spec"]),
+    GitPath=CommonGitPath,
+    Vm=InitialNode,
+    BaseDir=InitialHostName,
+    GitDir=filename:join(BaseDir,"common"),
+    RmCommonInitial=rpc:call(InitialNode,os,cmd,["rm -rf "++GitDir]),
+    io:format("DBG: RmCommonInitial ~p~n",[{RmCommonInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+    MakeDirCommonInitial=rpc:call(InitialNode,file,make_dir,[GitDir]),
+    io:format("DBG: MakeDirCommonInitial ~p~n",[{MakeDirCommonInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+    CommonGitCloneInitial=rpc:call(TestNode,appl,git_clone_to_dir,[InitialNode,GitPath,GitDir]),
+    io:format("DBG: CommonGitCloneInitial ~p~n",[{CommonGitCloneInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    LoadCommonInitial=rpc:call(TestNode,appl,load,[InitialNode,common,[filename:join(GitDir,"ebin")]]),
+    io:format("DBG: LoadCommonInitial ~p~n",[{LoadCommonInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    StartCommonInitial=rpc:call(TestNode,appl,start,[InitialNode,common]),
+    io:format("DBG: StartCommonInitial ~p~n",[{StartCommonInitial,?MODULE,?FUNCTION_NAME,?LINE}]),
+    pong=rpc:call(InitialNode,common,ping,[]),
+
     io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
     timer:sleep(2000),
 
 
-   NodeHostBaseApplDirList=start_check_hosts(AliveHosts),
-    io:format("DBG: NodeHostBaseApplDirList ~p~n",[{NodeHostBaseApplDirList,?MODULE,?FUNCTION_NAME,?LINE}]),
+    {ok,EtcdGitPath}=rpc:call(TestNode,db_application_spec,read,[gitpath,"etcd.spec"]),
+    EtcdGitDir="etcd",
 
-    % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
-
-    appl:git_clone(NodeLocal,?TestAddGitPath,?TestAddGitDir),
+    
+    %appl:git_clone(NodeLocal,?TestAddGitPath,?TestAddGitDir),
  
     %% test_add
-    ok=appl:load(NodeLocal,test_add,["test_add/ebin"]),
-    ok=appl:start(NodeLocal,test_add),
+   % ok=appl:load(NodeLocal,test_add,["test_add/ebin"]),
+ %   ok=appl:start(NodeLocal,test_add),
 
     % 3.Start InitalNode
 
