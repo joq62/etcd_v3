@@ -69,6 +69,7 @@ ping()->
 %% --------------------------------------------------------------------
 init([]) ->
     application:start(nodelog),
+    
     rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 				 {"OK, started server  ",?MODULE,node()}]), 
       {ok, #state{},0}.

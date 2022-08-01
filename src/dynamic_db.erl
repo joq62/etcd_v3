@@ -23,7 +23,8 @@
 
 
 -define(StorageType,ram_disc).
--define(WAIT_FOR_TABLES,1*5000).
+-define(WAIT_FOR_TABLES,4*5000).
+
 %% ====================================================================
 %% External functions
 %% ====================================================================
@@ -67,7 +68,9 @@ add_extra_nodes([Node|T])->
 	    mnesia:add_table_copy(schema,node(),?StorageType),
 	    TablesFromNode=rpc:call(Node,mnesia,system_info,[tables]),
 	    [mnesia:add_table_copy(Table,node(),?StorageType)||Table<-TablesFromNode,
-								 Table/=schema],
+							       Table/=schema],
+	  %  [mnesia:add_table_copy(Table,node(),?StorageType)||Table<-?TablesToCopy,
+	%							 Table/=schema],
 	    Tables=mnesia:system_info(tables),
 	    mnesia:wait_for_tables(Tables,?WAIT_FOR_TABLES);
 	_->
