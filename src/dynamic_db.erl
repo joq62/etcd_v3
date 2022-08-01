@@ -22,7 +22,7 @@
 	 ]).
 
 
--define(StorageType,ram_disc).
+-define(StorageType,ram_copies).
 -define(WAIT_FOR_TABLES,4*5000).
 -define(TablesToCopy,[application_spec,deployment_info,deployments,host_spec]).
 %% ====================================================================
