@@ -72,11 +72,13 @@ init([]) ->
     LogFile=filename:join(["logs","etcd_log"]),
     ok=rpc:call(node(),application,start,[nodelog],5000),
     ok=rpc:call(node(),nodelog,create,[LogFile],5000),
-    
+    application:start(sd),
+    dynamic_db:init(), 
     
     rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 				 {"OK, started server  ",?MODULE,node()}]), 
-      {ok, #state{},0}.
+    {ok, #state{}}.   
+  % {ok, #state{},0}.
 
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -116,8 +118,6 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info(timeout, State) ->
-    application:start(sd),
-    dynamic_db:init(), 
     {noreply, State};
 
    
