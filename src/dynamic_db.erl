@@ -24,7 +24,7 @@
 
 -define(StorageType,ram_disc).
 -define(WAIT_FOR_TABLES,4*5000).
--define(TablesToCopy,[db_application_spec,db_deployment_info,db_deployments,db_host_spec]).
+-define(TablesToCopy,[application_spec,deployment_info,deployments,host_spec]).
 %% ====================================================================
 %% External functions
 %% ====================================================================
@@ -78,7 +78,7 @@ add_extra_nodes([Node|T])->
 	    TablesFromNode=rpc:call(Node,mnesia,system_info,[tables]),
 	    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 					 {"DBG: TablesFromNode  ",TablesFromNode}]), 
-	    AddTableCopies=[mnesia:add_table_copy(Table,node(),?StorageType)||Table<-TablesFromNode,
+	    AddTableCopies=[mnesia:add_table_copy(Table,Node,?StorageType)||Table<-TablesFromNode,
 							       Table/=schema],
 %	    AddTableCopies=[{Table,mnesia:add_table_copy(Table,node(),?StorageType)}||Table<-?TablesToCopy,
 %								 Table/=schema],
