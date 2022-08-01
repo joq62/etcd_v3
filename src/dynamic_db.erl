@@ -23,8 +23,7 @@
 
 
 -define(StorageType,ram_copies).
--define(WAIT_FOR_TABLES,4*5000).
--define(TablesToCopy,[application_spec,deployment_info,deployments,host_spec]).
+-define(WAIT_FOR_TABLES,2*5000).
 %% ====================================================================
 %% External functions
 %% ====================================================================
@@ -78,9 +77,10 @@ add_extra_nodes([Node|T])->
 	    TablesFromNode=rpc:call(Node,mnesia,system_info,[tables]),
 	    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 					 {"DBG: TablesFromNode  ",TablesFromNode}]), 
-	    TablesToAdd=[Table||Table<-TablesFromNode,
-				Table/=schema],
-	    add_table_copy(TablesToAdd),
+	    AddTableCopies=[{Table,mnesia:add_table_copy(Table,node(),?StorageType)}||Table<-TablesFromNode,
+										      Table/=schema],
+	    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
+				 {"DBG: AddTableCopies  ",AddTableCopies,?MODULE,node()}]), 
 	    Tables=mnesia:system_info(tables),
 	    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 					 {"DBG: add_extra_nodes Tables  ",Tables,?MODULE,node()}]),
@@ -92,14 +92,3 @@ add_extra_nodes([Node|T])->
 					 {"DBG: Didnt connect to Node Reason  ",Reason,?MODULE,node()}]),
 	    add_extra_nodes(T)
     end.
-    
-
-
-add_table_copy([])->
-    ok;
-add_table_copy([Table|T])->
-    
-    AddTableCopy=mnesia:add_table_copy(Table,node(),?StorageType),
-    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
-				 {"DBG: Table,AddTableCopy  ",Table,AddTableCopy,?MODULE,node()}]), 
-    add_table_copy(T).    
