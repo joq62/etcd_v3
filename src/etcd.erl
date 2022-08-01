@@ -68,7 +68,11 @@ ping()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    application:start(nodelog),
+    
+    LogFile=filename:join(["logs","etcd_log"]),
+    ok=rpc:call(node(),application,start,[nodelog],5000),
+    ok=rpc:call(node(),nodelog,create,[LogFile],5000),
+    
     
     rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 				 {"OK, started server  ",?MODULE,node()}]), 
