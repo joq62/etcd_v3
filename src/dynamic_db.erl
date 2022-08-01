@@ -58,7 +58,7 @@ start([])->
 start(EtcdNodes) ->
     rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 				 {"DBG: EtcdNodes   ",EtcdNodes,?MODULE,node()}]), 
-    add_extra_nodes_1(EtcdNodes).
+    add_extra_nodes(EtcdNodes).
 
 
 %% --------------------------------------------------------------------
@@ -66,13 +66,6 @@ start(EtcdNodes) ->
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% --------------------------------------------------------------------
-add_extra_nodes_1([Node|_T])->
-    AddTableCopies=db_application_spec:add_node(Node,?StorageType),
-    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
-				 {"DBG: AddTableCopies  ",AddTableCopies,node()}]),
-    ok.
-
-
 add_extra_nodes([Node|T])->
     case mnesia:change_config(extra_db_nodes,[Node]) of
 	{ok,[Node]}->
@@ -85,14 +78,9 @@ add_extra_nodes([Node|T])->
 	    TablesFromNode=rpc:call(Node,mnesia,system_info,[tables]),
 	    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 					 {"DBG: TablesFromNode  ",TablesFromNode}]), 
-	    
-	    
-	    AddTableCopies=[mnesia:add_table_copy(Table,node(),?StorageType)||Table<-TablesFromNode,
-							       Table/=schema],
-%	    AddTableCopies=[{Table,mnesia:add_table_copy(Table,node(),?StorageType)}||Table<-?TablesToCopy,
-%								 Table/=schema],
-	    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
-					 {"DBG: add_extra_nodes AddTableCopies  ",AddTableCopies,?MODULE,node()}]), 
+	    TablesToAdd=[Table||Table<-TablesFromNode,
+				Table/=schema],
+	    add_table_copy(TablesToAdd),
 	    Tables=mnesia:system_info(tables),
 	    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 					 {"DBG: add_extra_nodes Tables  ",Tables,?MODULE,node()}]),
@@ -105,3 +93,13 @@ add_extra_nodes([Node|T])->
 	    add_extra_nodes(T)
     end.
     
+
+
+add_table_copy([])->
+    ok;
+add_table_copy([Table|T])->
+    
+    AddTableCopy=mnesia:add_table_copy(Table,node(),?StorageType),
+    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
+				 {"DBG: Table,AddTableCopy  ",Table,AddTableCopy,?MODULE,node()}]), 
+    add_table_copy(T).    
