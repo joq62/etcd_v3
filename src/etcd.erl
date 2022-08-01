@@ -68,8 +68,11 @@ ping()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
+    application:start(sd),
+    application:start(nodelog),
     
-   rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
+    dynamic_db:init(),
+    rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 				 {"OK, started server  ",?MODULE,node()}]), 
     {ok, #state{}}.
   %  {ok, #state{},0}.

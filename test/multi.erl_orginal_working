@@ -42,24 +42,20 @@ start()->
     NodeHostList=[{Node,HostName}||{ok,Node,HostName}<-HostStart],
     io:format("DBG: NodeHostList ~p~n",[{NodeHostList,?MODULE,?FUNCTION_NAME,?LINE}]),
      
-    % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, 
-    % {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
+    % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
+    %% Common
    
+    LoadStartCommon=[{load_start_appl(Node,HostName,"common.spec","common"),Node,HostName}||{Node,HostName}<-NodeHostList],
+    io:format("DBG: LoadStartCommon ~p~n",[{LoadStartCommon,?MODULE,?FUNCTION_NAME,?LINE}]),
+
     LoadStartEtcd=[{load_start_appl(Node,HostName,"etcd.spec","etcd"),Node,HostName}||{Node,HostName}<-NodeHostList],
     io:format("DBG: LoadStartEtcd ~p~n",[{LoadStartEtcd,?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    % 3. 
-    [{C100,_},{C200,_},{C202,_}]=NodeHostList,
-    io:format("3. InitialNode mnesia:System_info ~p~n",[{C100,rpc:call(C100,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
-    
-    io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
-    timer:sleep(2000),    
+
 
     % 3.On the IntialNode install load mnesia and table with content 
      io:format("3.On the IntialNode install load mnesia and table with content ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
    
-    
-    
     [{InitialNode,InitialHostName}|RestNodeHostsToBeAdded]=NodeHostList,
     ok=install_mnesia(InitialNode),
     ok=add_info_tables(TestNode,InitialNode),

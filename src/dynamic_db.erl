@@ -36,7 +36,7 @@ init()->
     mnesia:stop(),
     mnesia:delete_schema([node()]),
     mnesia:start(),
-    EtcdNodes=lists:delete(node(),sd:get(etcd)),
+    EtcdNodes=lists:delete(node(),sd:get_node(etcd)),
     start(EtcdNodes).
 
 %% --------------------------------------------------------------------
@@ -61,12 +61,12 @@ start(EtcdNodes) ->
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% --------------------------------------------------------------------
-add_extra_nodes([Node,T])->
+add_extra_nodes([Node|T])->
     case mnesia:change_config(extra_db_nodes,[Node]) of
 	{ok,[Node]}->
 	    mnesia:add_table_copy(schema,node(),?StorageType),
 	    TablesFromNode=rpc:call(Node,mnesia,system_info,[tables]),
-	    [mnesia:add_table_copy([Table,node(),?StorageType])||Table<-TablesFromNode,
+	    [mnesia:add_table_copy(Table,node(),?StorageType)||Table<-TablesFromNode,
 								 Table/=schema],
 	    Tables=mnesia:system_info(tables),
 	    mnesia:wait_for_tables(Tables,?WAIT_FOR_TABLES);
