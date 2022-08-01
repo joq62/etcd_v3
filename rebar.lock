@@ -1,1 +1,16 @@
-[].
+[{<<"common">>,
+  {git,"https://github.com/joq62/common.git",
+       {ref,"8115f4c6a82cb2707786314e3c9135198fa55404"}},
+  0},
+ {<<"config">>,
+  {git,"https://github.com/joq62/config.git",
+       {ref,"f27eeaf626b1c1d3c8e4f5327c374723eae9371f"}},
+  0},
+ {<<"nodelog">>,
+  {git,"https://github.com/joq62/nodelog.git",
+       {ref,"dd5568823d745f83f44000cd0ffd59f735c9eb62"}},
+  0},
+ {<<"sd">>,
+  {git,"https://github.com/joq62/sd.git",
+       {ref,"c54d04552fefce0f813117e4c55739d989a9bdd4"}},
+  0}].
