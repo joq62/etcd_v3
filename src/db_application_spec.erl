@@ -18,10 +18,18 @@ create_table(NodeList,StorageType)->
 add_node(Node,StorageType)->
     Result=case mnesia:change_config(extra_db_nodes, [Node]) of
 	       {ok,[Node]}->
-		   mnesia:add_table_copy(schema, node(),StorageType),
-		   mnesia:add_table_copy(?TABLE, node(), StorageType),
+		   AddSchema=mnesia:add_table_copy(schema, node(),StorageType),
+		   rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
+						{"DBG:AddSchema  ",AddSchema,node()}]),
+		   AddTableCopies=mnesia:add_table_copy(?TABLE, node(), StorageType),
+		   rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
+						{"DBG: AddTableCopies  ",AddTableCopies,node()}]),
 		   Tables=mnesia:system_info(tables),
-		   mnesia:wait_for_tables(Tables,20*1000);
+		   rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
+						{"DBG: Tables  ",Tables,node()}]),
+		   WaitForTables=mnesia:wait_for_tables(Tables,20*1000),
+		   rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
+						{"DBG: WaitForTables  ",WaitForTables,node()}]);
 	       Reason ->
 		   Reason
 	   end,
