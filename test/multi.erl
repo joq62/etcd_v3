@@ -64,7 +64,7 @@ start()->
 
     LoadStartEtcd=[{load_start_appl(Node,HostName,"etcd.spec","etcd"),Node,HostName}||{Node,HostName}<-RestToStart],
     io:format("DBG: LoadStartEtcd ~p~n",[{LoadStartEtcd,?MODULE,?FUNCTION_NAME,?LINE}]), 
-    timer:sleep(2*5000),
+  %  timer:sleep(2*5000),
 
     io:format("3.2 Check if RestToStart are started mnesia:System_info ~p~n",[{[{Node,rpc:call(Node,mnesia,system_info,[])}||{Node,_}<-NodeHostList],?MODULE,?FUNCTION_NAME,?LINE}]),   
   
@@ -79,8 +79,12 @@ start()->
     timer:sleep(2000),
  
 
-    []=[Node||Node<-Nodes,
+    [InitialNode]=[Node||Node<-Nodes,
 			 {ok,"https://github.com/joq62/etcd.git"}=/=rpc:call(Node,db_application_spec,read,[gitpath,"etcd.spec"])],   
+    RestNodes=lists:sort([Node||{Node,_HostName}<-RestToStart]),
+    [SecondNode|_]=RestNodes,
+    RestNodes=lists:sort(rpc:call(SecondNode ,mnesia,system_info,[running_db_nodes])),
+    io:format("7. runnings nodes when IntialNode is killed ~p~n",[{rpc:call(SecondNode ,mnesia,system_info,[running_db_nodes]),?MODULE,?FUNCTION_NAME,?LINE}]),
 
     % 8. Restart InitialNode 
 
@@ -97,6 +101,8 @@ start()->
     
 %    io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
 %    timer:sleep(2000),
+
+    io:format("Finale o ~p~n",[{InitialNode,rpc:call(InitialNode ,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
   
     io:format("TEST OK! ~p~n",[?MODULE]),
 
