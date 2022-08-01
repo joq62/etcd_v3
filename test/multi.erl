@@ -22,6 +22,7 @@
 %% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
 %% --------------------------------------------------------------------
 start()->
+    ok=setup(),
     StorageType=ram_copies,
     TestNode=node(),
 
@@ -37,20 +38,42 @@ start()->
     AliveHosts=lists:sort(lib_host:which_servers_alive()),
     io:format("DBG: AliveHosts ~p~n",[{AliveHosts,?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    HostStart=[lib_host:create_host_vm(HostName)||HostName<-AliveHosts],
+   
+    TimeOut=7000,    
+    Cookie=atom_to_list(erlang:get_cookie()),
+    
+    %% Create host vm
+    % create_vm(HostName,BaseDir,NodeName,TimeOut,Cookie)
+    HostStart=[create_vm_via_host(HostName,HostName,HostName,TimeOut,Cookie)||HostName<-AliveHosts],
     io:format("DBG: HostStart ~p~n",[{HostStart,?MODULE,?FUNCTION_NAME,?LINE}]),
     NodeHostList=[{Node,HostName}||{ok,Node,HostName}<-HostStart],
     io:format("DBG: NodeHostList ~p~n",[{NodeHostList,?MODULE,?FUNCTION_NAME,?LINE}]),
-     
+ 
+    % Ensure that nodes are connected
+    [{InitialNode,IntialHostName}|RestToStart]=NodeHostList,
+    Ping=[{Node,rpc:call(InitialNode,net_adm,ping,[Node])}||{Node,_}<-RestToStart],
+    io:format("DBG: Ping ~p~n",[{Ping,?MODULE,?FUNCTION_NAME,?LINE}]),
     % 2.1 load common and etcd on the running nodes {Node,HostName,BaseDir,ApplDir, 
     % {c202@c202,"c202","c202","/home/ubuntu/c202/host"},
    
-    LoadStartEtcd=[{load_start_appl(Node,HostName,"etcd.spec","etcd"),Node,HostName}||{Node,HostName}<-NodeHostList],
-    io:format("DBG: LoadStartEtcd ~p~n",[{LoadStartEtcd,?MODULE,?FUNCTION_NAME,?LINE}]),
-
     % 3. 
-    [{C100,_},{C200,_},{C202,_}]=NodeHostList,
-    io:format("3. InitialNode mnesia:System_info ~p~n",[{C100,rpc:call(C100,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+ 
+    % 3.1 Start Initial Node
+    LoadStartEtcdIntialNode=load_start_appl(InitialNode,IntialHostName,"etcd.spec","etcd"),
+    io:format("DBG: LoadStartEtcdIntialNode ~p~n",[{LoadStartEtcdIntialNode,?MODULE,?FUNCTION_NAME,?LINE}]),    
+    io:format("3.1 InitialNode mnesia:System_info ~p~n",[{InitialNode,rpc:call(InitialNode,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+
+    io:format("DBG: nodes() ~p~n",[{rpc:call(InitialNode,erlang,nodes,[]),?MODULE,?FUNCTION_NAME,?LINE}]), 
+
+    LoadStartEtcd=[{load_start_appl(Node,HostName,"etcd.spec","etcd"),Node,HostName}||{Node,HostName}<-RestToStart],
+    io:format("DBG: LoadStartEtcd ~p~n",[{LoadStartEtcd,?MODULE,?FUNCTION_NAME,?LINE}]), 
+    timer:sleep(2*5000),
+
+    io:format("3.2 Check if RestToStart are started mnesia:System_info ~p~n",[{rpc:call(InitialNode,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    
+
+   
     
     io:format("INIT STOP ************ ~p~n",[{rpc:call(TestNode ,init,stop,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
     timer:sleep(2000),    
@@ -68,7 +91,7 @@ start()->
 
     % 4. Add nodes
     io:format("4. InitialNode starts mnesia on RestNodes  ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
-    NodesToAdd=[Node||{Node,HostName}<-RestNodeHostsToBeAdded],
+    NodesToAdd=[Node||{Node,_HostName}<-RestNodeHostsToBeAdded],
     io:format("DBG InitialNode starts mnesia on  NodesToAdd ~p~n",[{InitialNode,NodesToAdd,?MODULE,?FUNCTION_NAME,?LINE}]),
     AddExtraNodes=add_extra_nodes(InitialNode,NodesToAdd,StorageType),
     io:format("DBG AddExtraNodes ~p~n",[{AddExtraNodes,?MODULE,?FUNCTION_NAME,?LINE}]),
@@ -117,6 +140,20 @@ start()->
 
 
 
+%% --------------------------------------------------------------------
+%% Function:start/0 
+%% Description: Initiate the eunit tests, set upp needed processes etc
+%% Returns: non
+%% -------------------------------------------------------------------
+create_vm_via_host(HostName,BaseDir,NodeName,TimeOut,Cookie)->
+    {HostName,Ip,_,Port,User,Password,_}=db_host_spec:read(HostName),
+    my_ssh:ssh_send(Ip,Port,User,Password,"rm -rf "++BaseDir,TimeOut),
+    my_ssh:ssh_send(Ip,Port,User,Password,"mkdir "++BaseDir,TimeOut),
+    PaArgs="  ",
+    EnvArgs=" ",
+    {ok,Node}=vm:ssh_create(HostName,NodeName,Cookie,PaArgs,EnvArgs,
+			    {Ip,Port,User,Password,TimeOut}),  
+    {ok,Node,HostName}.
 
 %% --------------------------------------------------------------------
 %% Function:start/0 
@@ -229,47 +266,25 @@ check_all(Nodes)->
 %% --------------------------------------------------------------------
 load_start_appl(Node,BaseDir,ApplSpec,ApplId)->
     {ok,GitPath}=rpc:call(node(),db_application_spec,read,[gitpath,ApplSpec]),
-    io:format("DBG:GitPath ~p~n",[{GitPath,?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   io:format("DBG:GitPath ~p~n",[{GitPath,?MODULE,?FUNCTION_NAME,?LINE}]),
     App=list_to_atom(ApplId),
 
     GitDir=filename:join(BaseDir,ApplId),
-    RmGitDir=rpc:call(Node,os,cmd,["rm -rf "++GitDir]),
-    io:format("DBG: RmGitDir ~p~n",[{GitDir,RmGitDir,?MODULE,?FUNCTION_NAME,?LINE}]),
-    MakeGitDir=rpc:call(Node,file,make_dir,[GitDir]),
-    io:format("DBG: MakeGitDir ~p~n",[{MakeGitDir,?MODULE,?FUNCTION_NAME,?LINE}]),
-    GitClone=rpc:call(node(),appl,git_clone_to_dir,[Node,GitPath,GitDir]),
-    io:format("DBG: GitClone ~p~n",[{GitClone,?MODULE,?FUNCTION_NAME,?LINE}]),
+    []=rpc:call(Node,os,cmd,["rm -rf "++GitDir]),
+  %  io:format("DBG: RmGitDir ~p~n",[{GitDir,RmGitDir,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(Node,file,make_dir,[GitDir]),
+   % io:format("DBG: MakeGitDir ~p~n",[{MakeGitDir,?MODULE,?FUNCTION_NAME,?LINE}]),
+    {ok,_}=rpc:call(node(),appl,git_clone_to_dir,[Node,GitPath,GitDir]),
+   % io:format("DBG: GitClone ~p~n",[{GitClone,?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    Load=rpc:call(node(),appl,load,[Node,App,[filename:join(GitDir,"ebin")]]),
-    io:format("DBG: Load ~p~n",[{Load,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(node(),appl,load,[Node,App,[filename:join(GitDir,"ebin")]]),
+   % io:format("DBG: Load ~p~n",[{Load,?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    Start=rpc:call(node(),appl,start,[Node,App]),
-    io:format("DBG: Start ~p~n",[{Start,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(node(),appl,start,[Node,App]),
+    %io:format("DBG: Start ~p~n",[{Start,?MODULE,?FUNCTION_NAME,?LINE}]),
     pong=rpc:call(Node,App,ping,[]),
     ok.
 
-%% --------------------------------------------------------------------
-%% Function: available_hosts()
-%% Description: Based on hosts.config file checks which hosts are avaible
-%% Returns: List({HostId,Ip,SshPort,Uid,Pwd}
-%% --------------------------------------------------------------------
-start_check_hosts(AliveHosts)->
-    io:format("DBG: InitialNode,Rest ~p~n",[{AliveHosts,?MODULE,?FUNCTION_NAME,?LINE}]),
-    %% create host vm and load etcd obs , commom etc is not loaded 
-    NodeHostBaseApplDirList=load_host(AliveHosts,[]),
-    io:format("DBG: NodeHostBaseApplDirList  ~p~n",[{NodeHostBaseApplDirList,?MODULE,?FUNCTION_NAME,?LINE}]),
-    NodeHostBaseApplDirList.
-
-load_host([],NodeHostBaseApplDirList)->
-    NodeHostBaseApplDirList;
-load_host([HostName|T],Acc)->
-    {ok,Node,BaseDir}=lib_host:create_host_vm(HostName),
-    {ok,ApplDir}=lib_host:git_load_host(Node,BaseDir),
-   % Delete Mnesia dirs
-    RmMnesia=rpc:call(Node,os,cmd,["rm -r Mnesia.*"]),  
-    io:format("DBG: RmMnesia ~p~n",[{RmMnesia,?MODULE,?FUNCTION_NAME,?LINE}]),
-    timer:sleep(2000),
-    load_host(T,[{Node,HostName,BaseDir,ApplDir}|Acc]).
 
 %% --------------------------------------------------------------------
 %% Function: available_hosts()
@@ -304,28 +319,28 @@ install_test_node(TestNode)->
   % 0. Install test node
     io:format("0. Install test node  ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
     %% Start Mnesia
-    MnesiaStopTest=rpc:call(TestNode,mnesia,stop,[]),
-    io:format("DBG MnesiaStopTest ~p~n",[{MnesiaStopTest,?MODULE,?FUNCTION_NAME,?LINE}]),
-    DeleteSchemaTest=rpc:call(TestNode,mnesia,delete_schema,[[TestNode]]),
-    io:format("DBG DeleteSchemaTest ~p~n",[{DeleteSchemaTest,?MODULE,?FUNCTION_NAME,?LINE}]),
-    MnesiaStartTest=rpc:call(TestNode, mnesia,start, []),
-    io:format("DBG MnesiaStartTest ~p~n",[{MnesiaStartTest,?MODULE,?FUNCTION_NAME,?LINE}]),
+    stopped=rpc:call(TestNode,mnesia,stop,[]),
+ %   io:format("DBG MnesiaStopTest ~p~n",[{MnesiaStopTest,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(TestNode,mnesia,delete_schema,[[TestNode]]),
+  %  io:format("DBG DeleteSchemaTest ~p~n",[{DeleteSchemaTest,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(TestNode, mnesia,start, []),
+%    io:format("DBG MnesiaStartTest ~p~n",[{MnesiaStartTest,?MODULE,?FUNCTION_NAME,?LINE}]),
     
     %% Create tables on TestNode
-    DbAppSpecCreate=rpc:call(TestNode,db_application_spec,create_table,[]),
-    io:format("DBG DbAppSpecCreate ~p~n",[{DbAppSpecCreate,?MODULE,?FUNCTION_NAME,?LINE}]),
-    DbDepInfo=rpc:call(TestNode,db_deployment_info,create_table,[]),
-    io:format("DBG DbDepInfo ~p~n",[{DbDepInfo,?MODULE,?FUNCTION_NAME,?LINE}]),
-    DbDeps=rpc:call(TestNode,db_deployments,create_table,[]),
-    io:format("DBG DbDeps ~p~n",[{DbDeps,?MODULE,?FUNCTION_NAME,?LINE}]),
-    DbHostSpec=rpc:call(TestNode,db_host_spec,create_table,[]),
-    io:format("DBG DbHostSpec ~p~n",[{DbHostSpec,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(TestNode,db_application_spec,create_table,[]),
+ %   io:format("DBG DbAppSpecCreate ~p~n",[{DbAppSpecCreate,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(TestNode,db_deployment_info,create_table,[]),
+   % io:format("DBG DbDepInfo ~p~n",[{DbDepInfo,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(TestNode,db_deployments,create_table,[]),
+  %  io:format("DBG DbDeps ~p~n",[{DbDeps,?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=rpc:call(TestNode,db_host_spec,create_table,[]),
+  %  io:format("DBG DbHostSpec ~p~n",[{DbHostSpec,?MODULE,?FUNCTION_NAME,?LINE}]),
     % End create tables for etcd
 
     %% add_info_tables(TestNode)
     ok=add_info_tables(TestNode),
 
-    io:format("0. Install test node  mnesia:System_info ~p~n",[{rpc:call(TestNode ,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
+%    io:format("0. Install test node  mnesia:System_info ~p~n",[{rpc:call(TestNode ,mnesia,system_info,[]),?MODULE,?FUNCTION_NAME,?LINE}]),
     ok.
     
 %% --------------------------------------------------------------------
@@ -335,11 +350,5 @@ install_test_node(TestNode)->
 %% -------------------------------------------------------------------
 
 setup()->
-    ok=test_nodes:start_nodes(),
-
-    Nodes=test_nodes:get_nodes(),
-    [c100@c100,c200@c100,c201@c100,c202@c100,c300@c100]=Nodes,  
-
-    NodeNames=test_nodes:get_nodenames(),
-    ["c100","c200","c201","c202","c300"]=NodeNames,
+  
     ok.

@@ -68,14 +68,10 @@ ping()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    application:start(sd),
     application:start(nodelog),
-    
-    dynamic_db:init(),
     rpc:cast(node(),nodelog,log,[notice,?MODULE_STRING,?LINE,
 				 {"OK, started server  ",?MODULE,node()}]), 
-    {ok, #state{}}.
-  %  {ok, #state{},0}.
+      {ok, #state{},0}.
 
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -115,10 +111,8 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_info(timeout, State) ->
-    mnesia:wait_for_tables([db_application_spec,
-			    db_deployment_info,
-			    db_deployments,
-			    db_host_spec], 30*1000), 
+    application:start(sd),
+    dynamic_db:init(), 
     {noreply, State};
 
    
